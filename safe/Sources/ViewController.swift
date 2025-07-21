@@ -14,7 +14,6 @@
 // =============================================================================
 //
 // Modifications by Chansol Shin on 2025-07-22
-// - Added call to PoseAngle.measureJointAngles(from:) in runModel(_:) to log joint angles.
 // =============================================================================
 
 import AVFoundation
@@ -22,6 +21,14 @@ import UIKit
 import os
 
 final class ViewController: UIViewController {
+  private let evaluationLabel: UILabel = {
+    let label = UILabel()
+    label.text = "측정 결과 없음"
+    label.textAlignment = .center
+    label.font = UIFont.systemFont(ofSize: 18, weight: .medium)
+    label.translatesAutoresizingMaskIntoConstraints = false
+    return label
+  }()
   private var overlayView: OverlayView!
   private var modelType: ModelType = Constants.defaultModelType
   private var threadCount: Int = Constants.defaultThreadCount
@@ -39,11 +46,57 @@ final class ViewController: UIViewController {
 
   var isRunning = false
 
+  enum EvaluationMethod: String, CaseIterable {
+    case none = "자세평가X"
+    case rula = "RULA"
+    case reba = "REBA"
+    case owas = "OWAS"
+
+    var interval: TimeInterval {
+      switch self {
+      case .none: return 0
+      case .rula: return 1.0
+      case .reba: return 2.0
+      case .owas: return 5.0
+      }
+    }
+  }
+
+  private var selectedEvaluationMethod: EvaluationMethod = .none {
+    didSet {
+      resetEvaluationTimer()
+    }
+  }
+  private var evaluationTimer: Timer?
+  
+  private let segmentedControl: UISegmentedControl = {
+    let control = UISegmentedControl(items: EvaluationMethod.allCases.map(\.rawValue))
+    control.selectedSegmentIndex = 0
+    control.translatesAutoresizingMaskIntoConstraints = false
+    return control
+  }()
+
   override func viewDidLoad() {
     super.viewDidLoad()
     setupOverlayView()
+    view.addSubview(segmentedControl)
+    segmentedControl.addTarget(self, action: #selector(segmentedControlChanged(_:)), for: .valueChanged)
+
+    NSLayoutConstraint.activate([
+      segmentedControl.topAnchor.constraint(equalTo: overlayView.bottomAnchor, constant: 8),
+      segmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+      segmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+    ])
+
+    view.addSubview(evaluationLabel)
+    NSLayoutConstraint.activate([
+      evaluationLabel.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: 12),
+      evaluationLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor)
+    ])
+
     updateModel()
     configCameraCapture()
+    resetEvaluationTimer()
   }
 
   private func setupOverlayView() {
@@ -69,6 +122,33 @@ final class ViewController: UIViewController {
       overlayView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
       overlayView.heightAnchor.constraint(equalToConstant: 525),
     ])
+  }
+
+  private func resetEvaluationTimer() {
+    evaluationTimer?.invalidate()
+    if selectedEvaluationMethod == .none {
+      DispatchQueue.main.async {
+        self.evaluationLabel.text = "측정 결과 없음"
+        self.evaluationLabel.textColor = .label
+      }
+      return
+    }
+    evaluationTimer = Timer.scheduledTimer(withTimeInterval: selectedEvaluationMethod.interval, repeats: true) { [weak self] _ in
+      guard let self = self, let keypoints = self.overlayView.latestKeypoints else { return }
+      guard self.selectedEvaluationMethod != .none else { return }
+      guard let angles = PoseAngle.measureJointAngles(from: keypoints) else { return }
+      print("✅ \(self.selectedEvaluationMethod.rawValue) 측정 완료")
+      if let (summary, color, score) = RULAEvaluator.evaluateAndSummarize(from: angles) {
+        DispatchQueue.main.async {
+          self.evaluationLabel.text = "\(summary) (\(score))"
+          self.evaluationLabel.textColor = color
+        }
+      }
+    }
+  }
+
+  @objc private func segmentedControlChanged(_ sender: UISegmentedControl) {
+    selectedEvaluationMethod = EvaluationMethod.allCases[sender.selectedSegmentIndex]
   }
 
   override func viewWillAppear(_ animated: Bool) {
@@ -155,7 +235,6 @@ extension ViewController: CameraFeedManagerDelegate {
             return
           }
           self.overlayView.draw(at: image, person: result)
-          PoseAngle.measureJointAngles(from: result.keyPoints)
         }
       } catch {
         os_log("Error running pose estimation.", type: .error)

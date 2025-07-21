@@ -27,18 +27,7 @@ enum PoseAngle {
         return angle * 180 / .pi
     }
 
-    static func measureJointAngles(from keypoints: [KeyPoint]) {
-        struct Static {
-            static var lastLoggedTime: Date = .distantPast
-        }
-
-        let now = Date()
-        if now.timeIntervalSince(Static.lastLoggedTime) < 5.0 {
-            return
-        }
-
-        Static.lastLoggedTime = now
-
+    static func measureJointAngles(from keypoints: [KeyPoint]) -> RULAEvaluator.JointAngles? {
         let kpDict = Dictionary(uniqueKeysWithValues: keypoints.map { ($0.bodyPart, $0.coordinate) })
 
         guard let shoulder = kpDict[.leftShoulder],
@@ -54,14 +43,14 @@ enum PoseAngle {
               let leftAnkle = kpDict[.leftAnkle],
               let rightAnkle = kpDict[.rightAnkle] else {
             print("⚠️ 일부 관절 포인트가 누락되었습니다.")
-            return
+            return nil
         }
 
         guard let nose = kpDict[.nose],
               let leftEar = kpDict[.leftEar],
               let rightEar = kpDict[.rightEar] else {
             print("⚠️ 귀 포인트가 누락되었습니다.")
-            return
+            return nil
         }
 
         // 목 중심 기준선 (어깨 중앙)
@@ -105,5 +94,14 @@ enum PoseAngle {
         // 오른다리
         let rightKneeAngle = 180 - angle(between: rightHip, and: rightKnee, and: rightAnkle)
         print("💡 오른다리 (엉덩이-무릎-발목) 관절 각도: \(rightKneeAngle)도")
+
+        return RULAEvaluator.JointAngles(
+            upperArm: (leftShoulderAngle + rightShoulderAngle) / 2,
+            lowerArm: (leftElbowAngle + rightElbowAngle) / 2,
+            neck: neckAngle,
+            trunk: waistAngle,
+            legLeft: leftKneeAngle,
+            legRight: rightKneeAngle
+        )
     }
 }
