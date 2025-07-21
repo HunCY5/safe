@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // =============================================================================
+//
+// Modifications by Chansol Shin on 2025-07-22
+// - Added call to PoseAngle.measureJointAngles(from:) in runModel(_:) to log joint angles.
+// =============================================================================
 
 import AVFoundation
 import UIKit
@@ -151,7 +155,7 @@ extension ViewController: CameraFeedManagerDelegate {
             return
           }
           self.overlayView.draw(at: image, person: result)
-//          PoseAngle.measureJointAngles(from: result.keyPoints)
+          PoseAngle.measureJointAngles(from: result.keyPoints)
         }
       } catch {
         os_log("Error running pose estimation.", type: .error)

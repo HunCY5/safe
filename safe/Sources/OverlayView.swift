@@ -12,20 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // =============================================================================
+//
+// Modifications by Chansol Shin on 2025-07-22
+// - Added drawing of mid-shoulder to mid-ear line to visualize neck angle.
+// =============================================================================
 
 import UIKit
 import os
 
-/// Custom view to visualize the pose estimation result on top of the input image.
 class OverlayView: UIImageView {
 
-  /// Visualization configs
   private enum Config {
     static let dot = (radius: CGFloat(10), color: UIColor.orange)
     static let line = (width: CGFloat(5.0), color: UIColor.orange)
   }
 
-  /// List of lines connecting each part to be visualized.
   private static let lines = [
     (from: BodyPart.leftWrist, to: BodyPart.leftElbow),
     (from: BodyPart.leftElbow, to: BodyPart.leftShoulder),
@@ -41,14 +42,8 @@ class OverlayView: UIImageView {
     (from: BodyPart.rightKnee, to: BodyPart.rightAnkle),
   ]
 
-  /// CGContext to draw the detection result.
   var context: CGContext!
 
-  /// Draw the detected keypoints on top of the input image.
-  ///
-  /// - Parameters:
-  ///     - image: The input image.
-  ///     - person: Keypoints of the person detected (i.e. output of a pose estimation model)
   func draw(at image: UIImage, person: Person) {
     if context == nil {
       UIGraphicsBeginImageContext(image.size)
@@ -68,11 +63,6 @@ class OverlayView: UIImageView {
     self.image = newImage
   }
 
-  /// Draw the dots (i.e. keypoints).
-  ///
-  /// - Parameters:
-  ///     - context: The context to be drawn on.
-  ///     - dots: The list of dots to be drawn.
   private func drawDots(at context: CGContext, dots: [CGPoint]) {
     for dot in dots {
       let dotRect = CGRect(
@@ -85,11 +75,6 @@ class OverlayView: UIImageView {
     }
   }
 
-  /// Draw the lines (i.e. conneting the keypoints).
-  ///
-  /// - Parameters:
-  ///     - context: The context to be drawn on.
-  ///     - lines: The list of lines to be drawn.
   private func drawLines(at context: CGContext, lines: [Line]) {
     for line in lines {
       context.move(to: CGPoint(x: line.from.x, y: line.from.y))
@@ -97,10 +82,6 @@ class OverlayView: UIImageView {
     }
   }
 
-  /// Generate a list of strokes to draw in order to visualize the pose estimation result.
-  ///
-  /// - Parameters:
-  ///     - person: The detected person (i.e. output of a pose estimation model).
   private func strokes(from person: Person) -> Strokes? {
     var strokes = Strokes(dots: [], lines: [])
     // MARK: Visualization of detection result
@@ -113,8 +94,29 @@ class OverlayView: UIImageView {
       strokes.dots.append(position)
     }
 
+    // 어깨 중간점과 귀 중간점 계산 및 시각화 라인 추가
+    if let leftShoulder = bodyPartToDotMap[.leftShoulder],
+       let rightShoulder = bodyPartToDotMap[.rightShoulder],
+       let leftEar = bodyPartToDotMap[.leftEar],
+       let rightEar = bodyPartToDotMap[.rightEar] {
+
+      let midShoulder = CGPoint(
+        x: (leftShoulder.x + rightShoulder.x) / 2,
+        y: (leftShoulder.y + rightShoulder.y) / 2
+      )
+
+      let midEar = CGPoint(
+        x: (leftEar.x + rightEar.x) / 2,
+        y: (leftEar.y + rightEar.y) / 2
+      )
+
+      strokes.dots.append(midShoulder)
+      strokes.dots.append(midEar)
+      strokes.lines.append(Line(from: midShoulder, to: midEar))
+    }
+
     do {
-      try strokes.lines = OverlayView.lines.map { map throws -> Line in
+      try strokes.lines += OverlayView.lines.map { map throws -> Line in
         guard let from = bodyPartToDotMap[map.from] else {
           throw VisualizationError.missingBodyPart(of: map.from)
         }
@@ -134,13 +136,11 @@ class OverlayView: UIImageView {
   }
 }
 
-/// The strokes to be drawn in order to visualize a pose estimation result.
 fileprivate struct Strokes {
   var dots: [CGPoint]
   var lines: [Line]
 }
 
-/// A straight line.
 fileprivate struct Line {
   let from: CGPoint
   let to: CGPoint
