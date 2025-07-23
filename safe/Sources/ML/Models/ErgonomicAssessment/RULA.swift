@@ -8,10 +8,21 @@
 import Foundation
 import CoreGraphics
 import UIKit
+import Combine
 
 struct RULAEvaluator {
+    static var selectedWeight: Int = 0
+    private static var weightSubscriber: AnyCancellable?
 
-    static func rulaEvaluate(from angles: JointAngles, muscleUse: Bool = false) -> Int {
+    static func setWeightBinding(from publisher: Published<Int>.Publisher) {
+        weightSubscriber = publisher
+            .receive(on: DispatchQueue.main)
+            .sink { newWeight in
+                selectedWeight = newWeight
+            }
+    }
+    
+    static func rulaEvaluate(from angles: JointAngles, keypoints: [BodyPart: CGPoint]? = nil) -> Int {
         // Upper Arm score
         let upperArmScore: Int
         if angles.upperArm < 20 {
@@ -32,7 +43,7 @@ struct RULAEvaluator {
         let wristTwistScore = 1
 
         // Neck score (adjusted for relaxed sensitivity)
-        let neckScore: Int
+        var neckScore: Int
         if angles.neck < 10 {
             neckScore = 1
         } else if angles.neck < 20 {
@@ -40,6 +51,15 @@ struct RULAEvaluator {
         } else {
             neckScore = 3
         }
+ 
+        if let keypoints = keypoints,
+           let headTwist = HeadTwistAndBending.detectHeadTwist(from: keypoints) {
+            neckScore += headTwist
+        }
+        if let keypoints = keypoints,
+        let headTwist = HeadTwistAndBending.detectHeadTilted(from: keypoints) {
+         neckScore += headTwist
+     }
 
         // Trunk score
         let trunkScore: Int
@@ -53,20 +73,29 @@ struct RULAEvaluator {
             trunkScore = 4
         }
 
+        // 근로자가 들고 있는 무게에 대한 점수 가중치(A)
+         var weightScore: Int = 0
+         switch selectedWeight {
+         case 0...2:
+             weightScore = 0
+         case 3...10:
+             weightScore = 1
+         default:
+             weightScore = 3
+         }
+
         // Leg score
         let legAvg = (angles.legLeft + angles.legRight) / 2
         let legScore = (legAvg < 30) ? 1 : 2
 
-        // Table A: Upper + Lower + Wrist
-        let scoreA = rulaTableA(upper: upperArmScore, lower: lowerArmScore, wrist: wristScore, twist: wristTwistScore)
-
-       
+        // Table A: (Upper + Lower + Wrist) + Weight
+        let scoreA = rulaTableA(upper: upperArmScore, lower: lowerArmScore, wrist: wristScore, twist: wristTwistScore) + weightScore
 
         // Table B: Neck + Trunk + Leg
-        let scoreB = rulaTableB(neck: neckScore, trunk: trunkScore, legs: legScore, muscleUse: muscleUse)
+        let scoreB = rulaTableB(neck: neckScore, trunk: trunkScore, legs: legScore)
 
-        // Table C mapping (simplified risk lookup)
-        return rulaTableC(scoreA: scoreA, scoreB: scoreB)
+        // Table C mapping (simplified risk lookup) + + Weight
+        return rulaTableC(scoreA: scoreA, scoreB: scoreB) + weightScore
     }
 
     private static func rulaTableA(upper: Int, lower: Int, wrist: Int, twist: Int) -> Int {
@@ -83,7 +112,7 @@ struct RULAEvaluator {
         return tableA[min(flatIndex, tableA.count - 1)][wristIndex] + twist
     }
 
-    private static func rulaTableB(neck: Int, trunk: Int, legs: Int, muscleUse: Bool) -> Int {
+    private static func rulaTableB(neck: Int, trunk: Int, legs: Int) -> Int {
         let tableB: [[Int]] = [
             [1,3,2,3,3,4,5,5,6,6,7,7],
             [2,3,2,3,4,5,5,5,6,7,7,7],
@@ -95,7 +124,6 @@ struct RULAEvaluator {
         let row = min(max(neck - 1, 0), 5)
         let col = min(max(((trunk - 1) * 2) + (legs - 1), 0), 11)
         var score = tableB[row][col]
-        if muscleUse { score += 1 }
         return score
     }
 
@@ -117,7 +145,7 @@ struct RULAEvaluator {
 
     static var buffer = PostureEvaluatorBuffer()
 
-    static func evaluateAndSummarize(from angles: JointAngles) -> (String, UIColor, Int)? {
+    static func evaluateAndSummarize(from angles: JointAngles, keypoints: [BodyPart: CGPoint]) -> (String, UIColor, Int)? {
         buffer.append(angles)
 
         guard buffer.isReady() else {
@@ -127,11 +155,11 @@ struct RULAEvaluator {
         let averaged = buffer.averagedAngles()
         buffer.reset()
 
-        let score = rulaEvaluate(from: averaged)
+        let score = rulaEvaluate(from: averaged, keypoints: keypoints)
         let (label, color) = evaluateSummary(from: averaged)
         return (label, color, score)
     }
-    
+
     private static func evaluateSummary(from angles: JointAngles) -> (String, UIColor) {
         let score = rulaEvaluate(from: angles)
 

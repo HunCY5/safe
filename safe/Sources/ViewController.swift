@@ -128,6 +128,8 @@ override func viewDidLoad() {
   weightSelection.$selectedWeight
     .sink { [weak self] newWeight in
       switch self?.selectedEvaluationMethod {
+      case .rula:
+           RULAEvaluator.selectedWeight = newWeight 
       case .reba:
         REBAEvaluator.selectedWeight = newWeight
       case .owas:
@@ -186,7 +188,7 @@ private func resetEvaluationTimer() {
     
       switch self.selectedEvaluationMethod {
     case .rula:
-      if let (summary, color, score) = RULAEvaluator.evaluateAndSummarize(from: angles) {
+      if let (summary, color, score) = RULAEvaluator.evaluateAndSummarize(from: angles, keypoints: Dictionary(uniqueKeysWithValues: keypoints.map { ($0.bodyPart, $0.coordinate) })) {
         DispatchQueue.main.async {
           self.evaluationLabel.text = "\(summary) (\(score))"
           self.evaluationLabel.textColor = color
@@ -216,8 +218,8 @@ private func resetEvaluationTimer() {
 
 @objc private func segmentedControlChanged(_ sender: UISegmentedControl) {
   selectedEvaluationMethod = EvaluationMethod.allCases[sender.selectedSegmentIndex]
-  // Show weight picker only for REBA or OWAS
-  weightPickerView.isHidden = !(selectedEvaluationMethod == .reba || selectedEvaluationMethod == .owas)
+  // Show weight picker only for RULA, REBA or OWAS
+  weightPickerView.isHidden = !(selectedEvaluationMethod == .rula || selectedEvaluationMethod == .reba || selectedEvaluationMethod == .owas)
 }
 
 override func viewWillAppear(_ animated: Bool) {

@@ -4,6 +4,7 @@
 //
 //  Created by 신찬솔 on 7/23/25.
 //
+
 import Foundation
 import CoreGraphics
 import UIKit
@@ -21,9 +22,9 @@ struct REBAEvaluator {
             }
     }
     
-    static func rebaEvaluate(from angles: JointAngles, muscleUse: Bool = false) -> Int {
+    static func rebaEvaluate(from angles: JointAngles, keypoints: [BodyPart: CGPoint]? = nil) -> Int {
         // Neck score (adjusted for relaxed sensitivity)
-        let neckScore: Int
+        var neckScore: Int
         if angles.neck < 10 {
             neckScore = 1
         } else if angles.neck < 40 {
@@ -31,6 +32,15 @@ struct REBAEvaluator {
         } else {
             neckScore = 3
         }
+        
+        if let keypoints = keypoints,
+           let headTwist = HeadTwistAndBending.detectHeadTwist(from: keypoints) {
+            neckScore += headTwist
+        }
+        if let keypoints = keypoints,
+        let headTwist = HeadTwistAndBending.detectHeadTilted(from: keypoints) {
+         neckScore += headTwist
+     }
         
         // Trunk score
         let trunkScore: Int
@@ -259,7 +269,6 @@ struct REBAEvaluator {
                 }
             }
         }
-
         return false
     }
 }
