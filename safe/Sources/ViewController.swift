@@ -75,8 +75,8 @@ enum EvaluationMethod: String, CaseIterable {
     switch self {
     case .none: return 0
     case .rula: return 1.0
-    case .reba: return 2.0
-    case .owas: return 5.0
+    case .reba: return 1.0
+    case .owas: return 1.0
     }
   }
 }
@@ -202,13 +202,12 @@ private func resetEvaluationTimer() {
         }
       }
       case .owas:
-          break
-//        if let (summary, color, score) = OWASEvaluator.evaluateAndSummarize(from: angles) {
-//          DispatchQueue.main.async {
-//            self.evaluationLabel.text = "\(summary) (\(score))"
-//            self.evaluationLabel.textColor = color
-//          }
-//        }
+          if let (summary, color, score) = OWASEvaluator.evaluateAndSummarize(from: angles, keypoints: Dictionary(uniqueKeysWithValues: keypoints.map { ($0.bodyPart, $0.coordinate) })) {
+          DispatchQueue.main.async {
+            self.evaluationLabel.text = "\(summary) (\(score))"
+            self.evaluationLabel.textColor = color
+          }
+        }
     case .none:
       break
           

@@ -5,7 +5,6 @@
 //  Created by 신찬솔 on 7/24/25.
 //
 
-
 import Foundation
 import UIKit
 
@@ -58,5 +57,24 @@ final class PostureEvaluatorBuffer {
             rightgroin: sum.rightgroin / count,
             leftgroin: sum.leftgroin / count
         )
+    }
+
+    /// 걷기 감지: 5회 중 3회 이상 다리 각도 변화가 5도 이상인 경우 걷는 것으로 판단
+    func isWalking(threshold: CGFloat = 5.0, minimumMatches: Int = 3) -> Bool {
+        guard anglesBuffer.count >= 2 else { return false }
+
+        let pairs = zip(anglesBuffer.dropLast(), anglesBuffer.dropFirst())
+        var count = 0
+
+        for (prev, next) in pairs {
+            let leftLegDiff = abs(next.legLeft - prev.legLeft)
+            let rightLegDiff = abs(next.legRight - prev.legRight)
+
+            if leftLegDiff >= threshold && rightLegDiff >= threshold {
+                count += 1
+            }
+        }
+
+        return count >= minimumMatches
     }
 }

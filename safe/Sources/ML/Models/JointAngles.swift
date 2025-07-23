@@ -12,7 +12,7 @@ struct JointAngles {
     let upperArm: CGFloat
     let lowerArm: CGFloat
     let neck: CGFloat
-    let trunk: CGFloat
+    var trunk: CGFloat
     let legLeft: CGFloat
     let legRight: CGFloat
     let rightgroin: CGFloat
