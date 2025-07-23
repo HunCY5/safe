@@ -29,6 +29,10 @@ final class PostureEvaluatorBuffer {
         anglesBuffer.removeAll()
     }
 
+    var buffer: [JointAngles] {
+        return anglesBuffer
+    }
+
     func averagedAngles() -> JointAngles {
         let count = CGFloat(anglesBuffer.count)
         let sum = anglesBuffer.reduce(into: JointAngles(upperArm: 0, lowerArm: 0, neck: 0, trunk: 0, legLeft: 0, legRight: 0)) { acc, item in

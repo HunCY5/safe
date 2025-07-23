@@ -75,12 +75,23 @@ struct REBAEvaluator {
         // Wrist score
         let wristScore = 2
         
+        let forceScore = 0 // 근로자가 들고 있는 무게에 대한 점수 가중치(A)
+//        If load < 11 lbs : +0
+//        If load 11 to 22 lbs : +1
+//        If load > 22 lbs: +2
+//        Adjust: If shock or rapid build up of force: add +1
         
+        let couplingScore = 0 // 근로자가 물체를 어떻게 잡고있는지에 대한 점수 가중치(B)
+        // 0점: 박스에 양쪽 손잡이가 있어 파워그립으로 쉽게 들 수 있음
+        // +1점: 들 수는 있으나 손잡이가 작거나 다른 부위(예: 팔꿈치, 허벅지)를 같이 써야 함
+        // +2점: 손잡이 없음. 그냥 물체를 끌어안거나 손바닥 전체로 받쳐야 함
+        // +3점: 물체 표면이 미끄럽거나, 불균형해서 안전하게 잡기 힘듦
+
         
         // Table A: Neck + Trunk + Leg
-        let scoreA = rebaTableA(neck: neckScore, trunk: trunkScore,leg: legScore)
+        let scoreA = rebaTableA(neck: neckScore, trunk: trunkScore,leg: legScore) + forceScore
         // Table B: Upper + Lower + Wrist
-        let scoreB = rebaTableB(upper: upperArmScore, lower: lowerArmScore, wrist: wristScore)
+        let scoreB = rebaTableB(upper: upperArmScore, lower: lowerArmScore, wrist: wristScore) + couplingScore
         // Table C mapping (simplified risk lookup)
         return rebaTableC(scoreA: scoreA, scoreB: scoreB)
     }
@@ -151,9 +162,18 @@ struct REBAEvaluator {
         }
 
         let averaged = buffer.averagedAngles()
+        // 정적 자세 판정: 평균 전 1분간의 버퍼를 사용
+        let isStatic = isStaticPosture(in: buffer.buffer)
+        let isRepetitive = isRepetitive(in: buffer.buffer)
         buffer.reset()
 
-        let score = rebaEvaluate(from: averaged)
+        var score = rebaEvaluate(from: averaged)
+        if isStatic {
+            score += 1
+        }
+        if isRepetitive {
+            score += 1
+        }
         let (label, color) = evaluateSummary(from: averaged)
         return (label, color, score)
     }
@@ -179,6 +199,51 @@ struct REBAEvaluator {
     }
     
     
-    
-}
+    // 1분간의 JointAngles 버퍼에서 각도 변화가 적으면 정적자세로 간주
+    private static func isStaticPosture(in values: [JointAngles], threshold: CGFloat = 5.0) -> Bool {
+        guard values.count >= 30 else { return false }  // 2초 간격 * 30 = 1분
 
+        let necks = values.map { $0.neck }
+        let trunks = values.map { $0.trunk }
+        let upperArms = values.map { $0.upperArm }
+
+        guard let neckMax = necks.max(), let neckMin = necks.min(),
+              let trunkMax = trunks.max(), let trunkMin = trunks.min(),
+              let armMax = upperArms.max(), let armMin = upperArms.min() else {
+            return false
+        }
+
+        let neckRange = neckMax - neckMin
+        let trunkRange = trunkMax - trunkMin
+        let armRange = armMax - armMin
+
+        return neckRange < threshold && trunkRange < threshold && armRange < threshold
+    }
+
+    // 반복 동작 감지: 다리를 제외한 모든 관절(upperArm, lowerArm, neck, trunk)에 대해 확인, 하나라도 반복성 감지 시 true 반환
+    private static func isRepetitive(in values: [JointAngles], threshold: CGFloat = 5.0, minRepeats: Int = 4) -> Bool {
+        guard values.count >= 2 else { return false }
+
+        let jointAngleSequences: [[CGFloat]] = [
+            values.map { $0.upperArm },
+            values.map { $0.lowerArm },
+            values.map { $0.neck },
+            values.map { $0.trunk },
+        ]
+
+        for jointAngles in jointAngleSequences {
+            var repeatCount = 0
+            for i in 1..<jointAngles.count {
+                let diff = abs(jointAngles[i] - jointAngles[i - 1])
+                if diff >= threshold {
+                    repeatCount += 1
+                    if repeatCount >= minRepeats {
+                        return true
+                    }
+                }
+            }
+        }
+
+        return false
+    }
+}
