@@ -138,12 +138,34 @@ final class ViewController: UIViewController {
       guard self.selectedEvaluationMethod != .none else { return }
       guard let angles = PoseAngle.measureJointAngles(from: keypoints) else { return }
       print("✅ \(self.selectedEvaluationMethod.rawValue) 측정 완료")
-      if let (summary, color, score) = RULAEvaluator.evaluateAndSummarize(from: angles) {
-        DispatchQueue.main.async {
-          self.evaluationLabel.text = "\(summary) (\(score))"
-          self.evaluationLabel.textColor = color
+      
+        switch self.selectedEvaluationMethod {
+      case .rula:
+        if let (summary, color, score) = RULAEvaluator.evaluateAndSummarize(from: angles) {
+          DispatchQueue.main.async {
+            self.evaluationLabel.text = "\(summary) (\(score))"
+            self.evaluationLabel.textColor = color
+          }
         }
-      }
+      case .reba:
+        if let (summary, color, score) = REBAEvaluator.evaluateAndSummarize(from: angles) {
+          DispatchQueue.main.async {
+            self.evaluationLabel.text = "\(summary) (\(score))"
+            self.evaluationLabel.textColor = color
+          }
+        }
+        case .owas:
+            break
+//        if let (summary, color, score) = OWASEvaluator.evaluateAndSummarize(from: angles) {
+//          DispatchQueue.main.async {
+//            self.evaluationLabel.text = "\(summary) (\(score))"
+//            self.evaluationLabel.textColor = color
+//          }
+//        }
+      case .none:
+        break
+            
+        }
     }
   }
 

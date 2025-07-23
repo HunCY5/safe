@@ -27,7 +27,7 @@ enum PoseAngle {
         return angle * 180 / .pi
     }
 
-    static func measureJointAngles(from keypoints: [KeyPoint]) -> RULAEvaluator.JointAngles? {
+    static func measureJointAngles(from keypoints: [KeyPoint]) -> JointAngles? {
         let kpDict = Dictionary(uniqueKeysWithValues: keypoints.map { ($0.bodyPart, $0.coordinate) })
 
         guard let shoulder = kpDict[.leftShoulder],
@@ -95,7 +95,7 @@ enum PoseAngle {
         let rightKneeAngle = 180 - angle(between: rightHip, and: rightKnee, and: rightAnkle)
         print("💡 오른다리 (엉덩이-무릎-발목) 관절 각도: \(rightKneeAngle)도")
 
-        return RULAEvaluator.JointAngles(
+        return JointAngles(
             upperArm: (leftShoulderAngle + rightShoulderAngle) / 2,
             lowerArm: (leftElbowAngle + rightElbowAngle) / 2,
             neck: neckAngle,

@@ -10,16 +10,8 @@ import CoreGraphics
 import UIKit
 
 struct RULAEvaluator {
-    struct JointAngles {
-        let upperArm: CGFloat
-        let lowerArm: CGFloat
-        let neck: CGFloat
-        let trunk: CGFloat
-        let legLeft: CGFloat
-        let legRight: CGFloat
-    }
 
-    static func evaluate(from angles: JointAngles, muscleUse: Bool = false) -> Int {
+    static func rulaEvaluate(from angles: JointAngles, muscleUse: Bool = false) -> Int {
         // Upper Arm score
         let upperArmScore: Int
         if angles.upperArm < 20 {
@@ -68,17 +60,13 @@ struct RULAEvaluator {
         // Table A: Upper + Lower + Wrist
         let scoreA = rulaTableA(upper: upperArmScore, lower: lowerArmScore, wrist: wristScore, twist: wristTwistScore)
 
-        // Muscle use bonus
-        var mutableScoreA = scoreA
-        if muscleUse {
-            mutableScoreA += 1
-        }
+       
 
         // Table B: Neck + Trunk + Leg
         let scoreB = rulaTableB(neck: neckScore, trunk: trunkScore, legs: legScore, muscleUse: muscleUse)
 
         // Table C mapping (simplified risk lookup)
-        return rulaTableC(scoreA: mutableScoreA, scoreB: scoreB)
+        return rulaTableC(scoreA: scoreA, scoreB: scoreB)
     }
 
     private static func rulaTableA(upper: Int, lower: Int, wrist: Int, twist: Int) -> Int {
@@ -127,50 +115,25 @@ struct RULAEvaluator {
         return tableC[row][col]
     }
 
+    static var buffer = PostureEvaluatorBuffer()
+
     static func evaluateAndSummarize(from angles: JointAngles) -> (String, UIColor, Int)? {
-        struct Buffer {
-            static var recentAngles: [JointAngles] = []
-        }
+        buffer.append(angles)
 
-        Buffer.recentAngles.append(angles)
-
-        guard Buffer.recentAngles.count >= 5 else {
+        guard buffer.isReady() else {
             return nil
         }
 
-        let averaged = averageJointAngles(from: Buffer.recentAngles)
-        Buffer.recentAngles.removeAll()
+        let averaged = buffer.averagedAngles()
+        buffer.reset()
 
-        let score = evaluate(from: averaged)
+        let score = rulaEvaluate(from: averaged)
         let (label, color) = evaluateSummary(from: averaged)
         return (label, color, score)
     }
-
-    private static func averageJointAngles(from samples: [JointAngles]) -> JointAngles {
-        let count = CGFloat(samples.count)
-        let sum = samples.reduce(into: JointAngles(upperArm: 0, lowerArm: 0, neck: 0, trunk: 0, legLeft: 0, legRight: 0)) { acc, item in
-            acc = JointAngles(
-                upperArm: acc.upperArm + item.upperArm,
-                lowerArm: acc.lowerArm + item.lowerArm,
-                neck: acc.neck + item.neck,
-                trunk: acc.trunk + item.trunk,
-                legLeft: acc.legLeft + item.legLeft,
-                legRight: acc.legRight + item.legRight
-            )
-        }
-
-        return JointAngles(
-            upperArm: sum.upperArm / count,
-            lowerArm: sum.lowerArm / count,
-            neck: sum.neck / count,
-            trunk: sum.trunk / count,
-            legLeft: sum.legLeft / count,
-            legRight: sum.legRight / count
-        )
-    }
-
+    
     private static func evaluateSummary(from angles: JointAngles) -> (String, UIColor) {
-        let score = evaluate(from: angles)
+        let score = rulaEvaluate(from: angles)
 
         switch score {
         case 1, 2:
