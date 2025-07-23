@@ -7,8 +7,19 @@
 import Foundation
 import CoreGraphics
 import UIKit
+import Combine
 
 struct REBAEvaluator {
+    static var selectedWeight: Int = 0
+    private static var weightSubscriber: AnyCancellable?
+
+    static func setWeightBinding(from publisher: Published<Int>.Publisher) {
+        weightSubscriber = publisher
+            .receive(on: DispatchQueue.main)
+            .sink { newWeight in
+                selectedWeight = newWeight
+            }
+    }
     
     static func rebaEvaluate(from angles: JointAngles, muscleUse: Bool = false) -> Int {
         // Neck score (adjusted for relaxed sensitivity)
@@ -75,11 +86,16 @@ struct REBAEvaluator {
         // Wrist score
         let wristScore = 2
         
-        let forceScore = 0 // 근로자가 들고 있는 무게에 대한 점수 가중치(A)
-//        If load < 11 lbs : +0
-//        If load 11 to 22 lbs : +1
-//        If load > 22 lbs: +2
-//        Adjust: If shock or rapid build up of force: add +1
+       // 근로자가 들고 있는 무게에 대한 점수 가중치(A)
+        var weightScore: Int = 0
+        switch selectedWeight {
+        case 0..<5:
+            weightScore = 0
+        case 5...10:
+            weightScore = 1
+        default:
+            weightScore = 2
+        }
         
         let couplingScore = 0 // 근로자가 물체를 어떻게 잡고있는지에 대한 점수 가중치(B)
         // 0점: 박스에 양쪽 손잡이가 있어 파워그립으로 쉽게 들 수 있음
@@ -89,7 +105,7 @@ struct REBAEvaluator {
 
         
         // Table A: Neck + Trunk + Leg
-        let scoreA = rebaTableA(neck: neckScore, trunk: trunkScore,leg: legScore) + forceScore
+        let scoreA = rebaTableA(neck: neckScore, trunk: trunkScore,leg: legScore) + weightScore
         // Table B: Upper + Lower + Wrist
         let scoreB = rebaTableB(upper: upperArmScore, lower: lowerArmScore, wrist: wristScore) + couplingScore
         // Table C mapping (simplified risk lookup)
