@@ -10,8 +10,28 @@ import CoreGraphics
 import UIKit
 
 
-struct HeadTwistAndBending {
-    static func detectHeadTilted(from keypoints: [BodyPart: CGPoint]) -> Int? {
+struct TwistAndBending {
+    
+    // 허리 기울임 감지
+    static func detectTrunkBending(from keypoints: [BodyPart: CGPoint]) -> Int? {
+        guard let leftShoulder = keypoints[.leftShoulder],
+              let rightShoulder = keypoints[.rightShoulder] else {
+            return nil
+        }
+        
+        let shoulderYDifference = abs(leftShoulder.y - rightShoulder.y)
+        if shoulderYDifference > 20 {
+            print("허리가 뒤틀림")
+            return 1
+        }
+        else {
+            return 0
+        }
+        
+    }
+    
+    // 머리 기울임 감지
+    static func detectHeadBending(from keypoints: [BodyPart: CGPoint]) -> Int? {
         guard  let leftEar = keypoints[.leftEar],
                let rightEar = keypoints[.rightEar] else {
             return nil

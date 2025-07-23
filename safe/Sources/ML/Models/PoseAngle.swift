@@ -86,7 +86,13 @@ enum PoseAngle {
         let rightWaistAngle = angle(between: rightShoulder, and: rightHip, and: rightAnkle)
         let waistAngle = 180 - (leftWaistAngle + rightWaistAngle) / 2
         print("💡 허리 평균 각도 (좌우): \(waistAngle)도")
-
+        
+        // 왼쪽 groin
+        let leftgroin = angle(between: leftKnee, and: leftHip, and: rightHip) - 90
+        print("💡 왼골반 (왼발-왼골반-오른골반) 관절 각도: \(leftgroin)도")
+        // 오른쪽 groin
+        let rightgroin = angle(between: rightKnee, and: rightHip, and: leftHip) - 90
+        print("💡 오른골반 (오른발-오른골반-왼골반) 관절 각도: \(rightgroin)도")
         // 왼다리
         let leftKneeAngle = 180 - angle(between: leftHip, and: leftKnee, and: leftAnkle)
         print("💡 왼다리 (엉덩이-무릎-발목) 관절 각도: \(leftKneeAngle)도")
@@ -101,7 +107,9 @@ enum PoseAngle {
             neck: neckAngle,
             trunk: waistAngle,
             legLeft: leftKneeAngle,
-            legRight: rightKneeAngle
+            legRight: rightKneeAngle,
+            rightgroin: rightgroin,
+            leftgroin: leftgroin
         )
     }
 }

@@ -33,17 +33,9 @@ struct REBAEvaluator {
             neckScore = 3
         }
         
-        if let keypoints = keypoints,
-           let headTwist = HeadTwistAndBending.detectHeadTwist(from: keypoints) {
-            neckScore += headTwist
-        }
-        if let keypoints = keypoints,
-        let headTwist = HeadTwistAndBending.detectHeadTilted(from: keypoints) {
-         neckScore += headTwist
-     }
         
         // Trunk score
-        let trunkScore: Int
+        var trunkScore: Int
         if angles.trunk < 10 {
             trunkScore = 1
         } else if angles.trunk < 30 {
@@ -53,6 +45,11 @@ struct REBAEvaluator {
         }
         else {
             trunkScore = 4
+        }
+        
+        if let keypoints = keypoints,
+           let trunkBending = TwistAndBending.detectTrunkBending(from: keypoints) {
+            neckScore += trunkBending
         }
         
         // Leg score
@@ -80,7 +77,7 @@ struct REBAEvaluator {
         
         // Upper Arm score
         let upperArmScore: Int
-        if angles.upperArm < 20 {
+        if angles.upperArm < 30 {
             upperArmScore = 1
         } else if angles.upperArm < 45 {
             upperArmScore = 2
@@ -94,7 +91,7 @@ struct REBAEvaluator {
         let lowerArmScore = (angles.lowerArm >= 60 && angles.lowerArm <= 100) ? 1 : 2
         
         // Wrist score
-        let wristScore = 2
+        let wristScore = 1
         
        // 근로자가 들고 있는 무게에 대한 점수 가중치(A)
         var weightScore: Int = 0
@@ -105,6 +102,18 @@ struct REBAEvaluator {
             weightScore = 1
         default:
             weightScore = 2
+        }
+        
+        if let keypoints = keypoints {
+            if let headTwist = TwistAndBending.detectHeadTwist(from: keypoints) {
+                neckScore += headTwist
+            }
+            if let headBending = TwistAndBending.detectHeadBending(from: keypoints) {
+                neckScore += headBending
+            }
+            if let trunkBending = TwistAndBending.detectTrunkBending(from: keypoints) {
+                trunkScore += trunkBending
+            }
         }
         
         let couplingScore = 0 // 근로자가 물체를 어떻게 잡고있는지에 대한 점수 가중치(B)

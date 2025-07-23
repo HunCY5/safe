@@ -25,9 +25,9 @@ struct RULAEvaluator {
     static func rulaEvaluate(from angles: JointAngles, keypoints: [BodyPart: CGPoint]? = nil) -> Int {
         // Upper Arm score
         let upperArmScore: Int
-        if angles.upperArm < 20 {
+        if angles.upperArm < 30 {
             upperArmScore = 1
-        } else if angles.upperArm < 45 {
+        } else if angles.upperArm < 55 {
             upperArmScore = 2
         } else if angles.upperArm < 90 {
             upperArmScore = 3
@@ -51,18 +51,10 @@ struct RULAEvaluator {
         } else {
             neckScore = 3
         }
- 
-        if let keypoints = keypoints,
-           let headTwist = HeadTwistAndBending.detectHeadTwist(from: keypoints) {
-            neckScore += headTwist
-        }
-        if let keypoints = keypoints,
-        let headTwist = HeadTwistAndBending.detectHeadTilted(from: keypoints) {
-         neckScore += headTwist
-     }
+
 
         // Trunk score
-        let trunkScore: Int
+        var trunkScore: Int
         if angles.trunk < 10 {
             trunkScore = 1
         } else if angles.trunk < 20 {
@@ -86,7 +78,21 @@ struct RULAEvaluator {
 
         // Leg score
         let legAvg = (angles.legLeft + angles.legRight) / 2
-        let legScore = (legAvg < 30) ? 1 : 2
+        let groinAvg = (angles.leftgroin + angles.rightgroin) / 2
+        
+        let legScore = (legAvg < 30) || (groinAvg < 30) ? 1 : 2
+        
+        if let keypoints = keypoints {
+            if let headTwist = TwistAndBending.detectHeadTwist(from: keypoints) {
+                neckScore += headTwist
+            }
+            if let headBending = TwistAndBending.detectHeadBending(from: keypoints) {
+                neckScore += headBending
+            }
+            if let trunkBending = TwistAndBending.detectTrunkBending(from: keypoints) {
+                trunkScore += trunkBending
+            }
+        }
 
         // Table A: (Upper + Lower + Wrist) + Weight
         let scoreA = rulaTableA(upper: upperArmScore, lower: lowerArmScore, wrist: wristScore, twist: wristTwistScore) + weightScore
@@ -123,7 +129,7 @@ struct RULAEvaluator {
         ]
         let row = min(max(neck - 1, 0), 5)
         let col = min(max(((trunk - 1) * 2) + (legs - 1), 0), 11)
-        var score = tableB[row][col]
+        let score = tableB[row][col]
         return score
     }
 

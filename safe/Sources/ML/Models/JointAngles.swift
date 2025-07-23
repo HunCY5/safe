@@ -15,4 +15,6 @@ struct JointAngles {
     let trunk: CGFloat
     let legLeft: CGFloat
     let legRight: CGFloat
+    let rightgroin: CGFloat
+    let leftgroin: CGFloat
 }
