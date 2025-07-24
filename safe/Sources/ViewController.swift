@@ -121,7 +121,7 @@ override func viewDidLoad() {
     weightPickerView.topAnchor.constraint(equalTo: evaluationLabel.bottomAnchor, constant: 12),
     weightPickerView.leadingAnchor.constraint(equalTo: evaluationLabel.leadingAnchor),
     weightPickerView.trailingAnchor.constraint(equalTo: evaluationLabel.trailingAnchor),
-    weightPickerView.heightAnchor.constraint(equalToConstant: 100)
+    weightPickerView.heightAnchor.constraint(equalToConstant: 80)
   ])
 
   // Combine subscription for selectedWeight changes
@@ -162,7 +162,7 @@ private func setupOverlayView() {
     topView.topAnchor.constraint(equalTo: view.topAnchor),
     topView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
     topView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-    topView.heightAnchor.constraint(equalToConstant: 171),
+    topView.heightAnchor.constraint(equalToConstant: 80),
 
     overlayView.topAnchor.constraint(equalTo: topView.bottomAnchor),
     overlayView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
