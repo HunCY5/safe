@@ -22,6 +22,8 @@ import os
 
 class OverlayView: UIImageView {
 
+  var latestKeypoints: [KeyPoint]? = nil
+
   private enum Config {
     static let dot = (radius: CGFloat(10), color: UIColor.orange)
     static let line = (width: CGFloat(5.0), color: UIColor.orange)
@@ -45,6 +47,7 @@ class OverlayView: UIImageView {
   var context: CGContext!
 
   func draw(at image: UIImage, person: Person) {
+    self.latestKeypoints = person.keyPoints
     if context == nil {
       UIGraphicsBeginImageContext(image.size)
       guard let context = UIGraphicsGetCurrentContext() else {

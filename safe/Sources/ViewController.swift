@@ -1,3 +1,4 @@
+
 // Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,160 +15,327 @@
 // =============================================================================
 //
 // Modifications by Chansol Shin on 2025-07-22
-// - Added call to PoseAngle.measureJointAngles(from:) in runModel(_:) to log joint angles.
 // =============================================================================
 
 import AVFoundation
 import UIKit
 import os
+import Combine
+
+
+// MARK: - Weight Picker for REBA/OWAS
+private let weightPickerView: UIPickerView = {
+  let picker = UIPickerView()
+  picker.translatesAutoresizingMaskIntoConstraints = false
+  picker.isHidden = true
+  return picker
+}()
+
+private let weightOptions = Array(0...50).map { "\($0)kg" }
+
+final class WeightSelection: ObservableObject {
+  @Published var selectedWeight: Int = 0
+}
 
 final class ViewController: UIViewController {
-  private var overlayView: OverlayView!
-  private var modelType: ModelType = Constants.defaultModelType
-  private var threadCount: Int = Constants.defaultThreadCount
-  private var delegate: Delegates = Constants.defaultDelegate
-  private let minimumScore = Constants.minimumScore
+private let weightSelection = WeightSelection()
+private var cancellables = Set<AnyCancellable>()
+private let evaluationLabel: UILabel = {
+  let label = UILabel()
+  label.text = "측정 결과 없음"
+  label.textAlignment = .center
+  label.font = UIFont.systemFont(ofSize: 18, weight: .medium)
+  label.translatesAutoresizingMaskIntoConstraints = false
+  return label
+}()
+private var overlayView: OverlayView!
+private var modelType: ModelType = Constants.defaultModelType
+private var threadCount: Int = Constants.defaultThreadCount
+private var delegate: Delegates = Constants.defaultDelegate
+private let minimumScore = Constants.minimumScore
 
-  
-  private var imageViewFrame: CGRect?
-  var overlayImage: OverlayView?
-  private var poseEstimator: PoseEstimator?
-  private var cameraFeedManager: CameraFeedManager!
+
+private var imageViewFrame: CGRect?
+var overlayImage: OverlayView?
+private var poseEstimator: PoseEstimator?
+private var cameraFeedManager: CameraFeedManager!
 
 
-  let queue = DispatchQueue(label: "serial_queue")
+let queue = DispatchQueue(label: "serial_queue")
 
-  var isRunning = false
+var isRunning = false
 
-  override func viewDidLoad() {
-    super.viewDidLoad()
-    setupOverlayView()
-    updateModel()
-    configCameraCapture()
-  }
+enum EvaluationMethod: String, CaseIterable {
+  case none = "자세평가X"
+  case rula = "RULA"
+  case reba = "REBA"
+  case owas = "OWAS"
 
-  private func setupOverlayView() {
-    let topView = UIView()
-    topView.backgroundColor = UIColor(white: 0.0, alpha: 0.47)
-    topView.translatesAutoresizingMaskIntoConstraints = false
-    view.addSubview(topView)
-
-    overlayView = OverlayView()
-    overlayView.contentMode = .scaleAspectFill
-    overlayView.clipsToBounds = true
-    overlayView.translatesAutoresizingMaskIntoConstraints = false
-    view.addSubview(overlayView)
-
-    NSLayoutConstraint.activate([
-      topView.topAnchor.constraint(equalTo: view.topAnchor),
-      topView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-      topView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-      topView.heightAnchor.constraint(equalToConstant: 171),
-
-      overlayView.topAnchor.constraint(equalTo: topView.bottomAnchor),
-      overlayView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-      overlayView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-      overlayView.heightAnchor.constraint(equalToConstant: 525),
-    ])
-  }
-
-  override func viewWillAppear(_ animated: Bool) {
-    super.viewWillAppear(animated)
-    cameraFeedManager?.startRunning()
-  }
-
-  override func viewWillDisappear(_ animated: Bool) {
-    super.viewWillDisappear(animated)
-    cameraFeedManager?.stopRunning()
-  }
-
-  override func viewDidLayoutSubviews() {
-    super.viewDidLayoutSubviews()
-    imageViewFrame = overlayView.frame
-  }
-
-  private func configCameraCapture() {
-    cameraFeedManager = CameraFeedManager()
-    cameraFeedManager.startRunning()
-    cameraFeedManager.delegate = self
-  }
-
-  
-  private func updateModel() {
-    queue.async {
-      do {
-        switch self.modelType {
-        case .posenet:
-          self.poseEstimator = try PoseNet(
-            threadCount: self.threadCount,
-            delegate: self.delegate)
-        case .movenetLighting, .movenetThunder:
-          self.poseEstimator = try MoveNet(
-            threadCount: self.threadCount,
-            delegate: self.delegate,
-            modelType: self.modelType)
-        }
-      } catch let error {
-        os_log("Error: %@", log: .default, type: .error, String(describing: error))
-      }
+  var interval: TimeInterval {
+    switch self {
+    case .none: return 0
+    case .rula: return 1.0
+    case .reba: return 1.0
+    case .owas: return 1.0
     }
   }
+}
 
-  @IBAction private func threadStepperValueChanged(_ sender: UIStepper) {
-    threadCount = Int(sender.value)
-    updateModel()
+private var selectedEvaluationMethod: EvaluationMethod = .none {
+  didSet {
+    resetEvaluationTimer()
   }
-  @IBAction private func delegatesValueChanged(_ sender: UISegmentedControl) {
-    delegate = Delegates.allCases[sender.selectedSegmentIndex]
-    updateModel()
-  }
+}
+private var evaluationTimer: Timer?
 
-  @IBAction private func modelTypeValueChanged(_ sender: UISegmentedControl) {
-    modelType = ModelType.allCases[sender.selectedSegmentIndex]
-    updateModel()
+private let segmentedControl: UISegmentedControl = {
+  let control = UISegmentedControl(items: EvaluationMethod.allCases.map(\.rawValue))
+  control.selectedSegmentIndex = 0
+  control.translatesAutoresizingMaskIntoConstraints = false
+  return control
+}()
+
+override func viewDidLoad() {
+  super.viewDidLoad()
+  setupOverlayView()
+  view.addSubview(segmentedControl)
+  segmentedControl.addTarget(self, action: #selector(segmentedControlChanged(_:)), for: .valueChanged)
+
+  NSLayoutConstraint.activate([
+    segmentedControl.topAnchor.constraint(equalTo: overlayView.bottomAnchor, constant: 8),
+    segmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+    segmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+  ])
+
+  view.addSubview(evaluationLabel)
+  NSLayoutConstraint.activate([
+    evaluationLabel.topAnchor.constraint(equalTo: segmentedControl.bottomAnchor, constant: 12),
+    evaluationLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor)
+  ])
+
+  // Add weight picker below evaluationLabel
+  view.addSubview(weightPickerView)
+  weightPickerView.dataSource = self
+  weightPickerView.delegate = self
+  NSLayoutConstraint.activate([
+    weightPickerView.topAnchor.constraint(equalTo: evaluationLabel.bottomAnchor, constant: 12),
+    weightPickerView.leadingAnchor.constraint(equalTo: evaluationLabel.leadingAnchor),
+    weightPickerView.trailingAnchor.constraint(equalTo: evaluationLabel.trailingAnchor),
+    weightPickerView.heightAnchor.constraint(equalToConstant: 80)
+  ])
+
+  // Combine subscription for selectedWeight changes
+  weightSelection.$selectedWeight
+    .sink { [weak self] newWeight in
+      switch self?.selectedEvaluationMethod {
+      case .rula:
+           RULAEvaluator.selectedWeight = newWeight 
+      case .reba:
+        REBAEvaluator.selectedWeight = newWeight
+      case .owas:
+        // OWASEvaluator.selectedWeight = newWeight
+        break
+      default:
+        break
+      }
+    }
+    .store(in: &cancellables)
+
+  updateModel()
+  configCameraCapture()
+  resetEvaluationTimer()
+}
+
+private func setupOverlayView() {
+  let topView = UIView()
+  topView.backgroundColor = UIColor(white: 0.0, alpha: 0.47)
+  topView.translatesAutoresizingMaskIntoConstraints = false
+  view.addSubview(topView)
+
+  overlayView = OverlayView()
+  overlayView.contentMode = .scaleAspectFill
+  overlayView.clipsToBounds = true
+  overlayView.translatesAutoresizingMaskIntoConstraints = false
+  view.addSubview(overlayView)
+
+  NSLayoutConstraint.activate([
+    topView.topAnchor.constraint(equalTo: view.topAnchor),
+    topView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+    topView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+    topView.heightAnchor.constraint(equalToConstant: 80),
+
+    overlayView.topAnchor.constraint(equalTo: topView.bottomAnchor),
+    overlayView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+    overlayView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+    overlayView.heightAnchor.constraint(equalToConstant: 525),
+  ])
+}
+
+private func resetEvaluationTimer() {
+  evaluationTimer?.invalidate()
+  if selectedEvaluationMethod == .none {
+    DispatchQueue.main.async {
+      self.evaluationLabel.text = "측정 결과 없음"
+      self.evaluationLabel.textColor = .label
+    }
+    return
   }
+  evaluationTimer = Timer.scheduledTimer(withTimeInterval: selectedEvaluationMethod.interval, repeats: true) { [weak self] _ in
+    guard let self = self, let keypoints = self.overlayView.latestKeypoints else { return }
+    guard self.selectedEvaluationMethod != .none else { return }
+    guard let angles = PoseAngle.measureJointAngles(from: keypoints) else { return }
+    print("✅ \(self.selectedEvaluationMethod.rawValue) 측정 완료")
+    
+      switch self.selectedEvaluationMethod {
+    case .rula:
+      if let (summary, color, score) = RULAEvaluator.evaluateAndSummarize(from: angles, keypoints: Dictionary(uniqueKeysWithValues: keypoints.map { ($0.bodyPart, $0.coordinate) })) {
+        DispatchQueue.main.async {
+          self.evaluationLabel.text = "\(summary) (\(score))"
+          self.evaluationLabel.textColor = color
+        }
+      }
+    case .reba:
+      if let (summary, color, score) = REBAEvaluator.evaluateAndSummarize(from: angles) {
+        DispatchQueue.main.async {
+          self.evaluationLabel.text = "\(summary) (\(score))"
+          self.evaluationLabel.textColor = color
+        }
+      }
+      case .owas:
+          if let (summary, color, score) = OWASEvaluator.evaluateAndSummarize(from: angles, keypoints: Dictionary(uniqueKeysWithValues: keypoints.map { ($0.bodyPart, $0.coordinate) })) {
+          DispatchQueue.main.async {
+            self.evaluationLabel.text = "\(summary) (\(score))"
+            self.evaluationLabel.textColor = color
+          }
+        }
+    case .none:
+      break
+          
+      }
+  }
+}
+
+@objc private func segmentedControlChanged(_ sender: UISegmentedControl) {
+  selectedEvaluationMethod = EvaluationMethod.allCases[sender.selectedSegmentIndex]
+  // Show weight picker only for RULA, REBA or OWAS
+  weightPickerView.isHidden = !(selectedEvaluationMethod == .rula || selectedEvaluationMethod == .reba || selectedEvaluationMethod == .owas)
+}
+
+override func viewWillAppear(_ animated: Bool) {
+  super.viewWillAppear(animated)
+  cameraFeedManager?.startRunning()
+}
+
+override func viewWillDisappear(_ animated: Bool) {
+  super.viewWillDisappear(animated)
+  cameraFeedManager?.stopRunning()
+}
+
+override func viewDidLayoutSubviews() {
+  super.viewDidLayoutSubviews()
+  imageViewFrame = overlayView.frame
+}
+
+private func configCameraCapture() {
+  cameraFeedManager = CameraFeedManager()
+  cameraFeedManager.startRunning()
+  cameraFeedManager.delegate = self
+}
+
+
+private func updateModel() {
+  queue.async {
+    do {
+      switch self.modelType {
+      case .posenet:
+        self.poseEstimator = try PoseNet(
+          threadCount: self.threadCount,
+          delegate: self.delegate)
+      case .movenetLighting, .movenetThunder:
+        self.poseEstimator = try MoveNet(
+          threadCount: self.threadCount,
+          delegate: self.delegate,
+          modelType: self.modelType)
+      }
+    } catch let error {
+      os_log("Error: %@", log: .default, type: .error, String(describing: error))
+    }
+  }
+}
+
+@IBAction private func threadStepperValueChanged(_ sender: UIStepper) {
+  threadCount = Int(sender.value)
+  updateModel()
+}
+@IBAction private func delegatesValueChanged(_ sender: UISegmentedControl) {
+  delegate = Delegates.allCases[sender.selectedSegmentIndex]
+  updateModel()
+}
+
+@IBAction private func modelTypeValueChanged(_ sender: UISegmentedControl) {
+  modelType = ModelType.allCases[sender.selectedSegmentIndex]
+  updateModel()
+}
 }
 
 // MARK: - CameraFeedManagerDelegate Methods
 extension ViewController: CameraFeedManagerDelegate {
-  func cameraFeedManager(
-    _ cameraFeedManager: CameraFeedManager, didOutput pixelBuffer: CVPixelBuffer
-  ) {
-    self.runModel(pixelBuffer)
-  }
+func cameraFeedManager(
+  _ cameraFeedManager: CameraFeedManager, didOutput pixelBuffer: CVPixelBuffer
+) {
+  self.runModel(pixelBuffer)
+}
 
-  private func runModel(_ pixelBuffer: CVPixelBuffer) {
-    guard !isRunning else { return }
+private func runModel(_ pixelBuffer: CVPixelBuffer) {
+  guard !isRunning else { return }
 
-    guard let estimator = poseEstimator else { return }
-    queue.async {
-      self.isRunning = true
-      defer { self.isRunning = false }
-      do {
-        let (result, times) = try estimator.estimateSinglePose(
-            on: pixelBuffer)
-        DispatchQueue.main.async {
-      
-          let image = UIImage(ciImage: CIImage(cvPixelBuffer: pixelBuffer))
+  guard let estimator = poseEstimator else { return }
+  queue.async {
+    self.isRunning = true
+    defer { self.isRunning = false }
+    do {
+      let (result, times) = try estimator.estimateSinglePose(
+          on: pixelBuffer)
+      DispatchQueue.main.async {
+    
+        let image = UIImage(ciImage: CIImage(cvPixelBuffer: pixelBuffer))
 
-          if result.score < self.minimumScore {
-            self.overlayView.image = image
-            return
-          }
-          self.overlayView.draw(at: image, person: result)
-          PoseAngle.measureJointAngles(from: result.keyPoints)
+        if result.score < self.minimumScore {
+          self.overlayView.image = image
+          return
         }
-      } catch {
-        os_log("Error running pose estimation.", type: .error)
-        return
+        self.overlayView.draw(at: image, person: result)
       }
+    } catch {
+      os_log("Error running pose estimation.", type: .error)
+      return
     }
   }
 }
+}
 
 enum Constants {
-  static let defaultThreadCount = 4
-  static let defaultDelegate: Delegates = .gpu
-  static let defaultModelType: ModelType = .movenetThunder
-  static let minimumScore: Float32 = 0.2
+static let defaultThreadCount = 4
+static let defaultDelegate: Delegates = .gpu
+static let defaultModelType: ModelType = .movenetThunder
+static let minimumScore: Float32 = 0.2
+}
+
+// MARK: - UIPickerViewDataSource & Delegate
+extension ViewController: UIPickerViewDataSource, UIPickerViewDelegate {
+    func numberOfComponents(in pickerView: UIPickerView) -> Int {
+        return 1
+    }
+    
+    func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+        return weightOptions.count
+    }
+    
+    func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
+        return weightOptions[row]
+    }
+    
+    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+        weightSelection.selectedWeight = row
+    }
 }
