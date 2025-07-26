@@ -10,5 +10,6 @@ target 'safe' do
 
   # Pods for safe
   pod 'LiteRTSwift', '~> 0.0.1-nightly', :subspecs => ['CoreML', 'Metal']
+  pod 'SnapKit'
 
 end

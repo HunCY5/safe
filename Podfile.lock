@@ -18,20 +18,24 @@ PODS:
     - LiteRTSwift/Core (= 0.0.1-nightly.20240911)
     - LiteRTSwift/Privacy (= 0.0.1-nightly.20240911)
   - LiteRTSwift/Privacy (0.0.1-nightly.20240911)
+  - SnapKit (5.7.1)
 
 DEPENDENCIES:
   - LiteRTSwift/CoreML (~> 0.0.1-nightly)
   - LiteRTSwift/Metal (~> 0.0.1-nightly)
+  - SnapKit
 
 SPEC REPOS:
   trunk:
     - LiteRTC
     - LiteRTSwift
+    - SnapKit
 
 SPEC CHECKSUMS:
   LiteRTC: 676f1c8bf8e899d62ecae0a69a84dbd9140b7b33
   LiteRTSwift: 90309f466b6069a59a002ac17bc1cd78c08647f2
+  SnapKit: d612e99e678a2d3b95bf60b0705ed0a35c03484a
 
-PODFILE CHECKSUM: e79215f2994c31aabd7527ea7f21f21618dbd4aa
+PODFILE CHECKSUM: fc6c1a1251123230af953b999c708a0d9d8a82d8
 
 COCOAPODS: 1.16.2
