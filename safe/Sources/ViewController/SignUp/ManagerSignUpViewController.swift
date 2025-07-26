@@ -32,3 +32,5 @@ class ManagerSignUpViewController: UIViewController, ManagerSignUpViewDelegate {
         navigationController?.pushViewController(loginVC, animated: true)
     }
 }
+
+
