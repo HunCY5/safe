@@ -22,6 +22,18 @@ class ProfileView: UIView {
 
         self.backgroundColor = .systemGroupedBackground
 
+        // MARK: - ScrollView & StackView
+        let scrollView = UIScrollView()
+        scrollView.delaysContentTouches = false
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        self.addSubview(scrollView)
+
+        let contentStackView = UIStackView()
+        contentStackView.axis = .vertical
+        contentStackView.spacing = 20
+        contentStackView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(contentStackView)
+
         // 1. 로그인 필요 카드
         let loginCard = UIView()
         loginCard.translatesAutoresizingMaskIntoConstraints = false
@@ -67,14 +79,12 @@ class ProfileView: UIView {
         loginCard.addSubview(loginTitle)
         loginCard.addSubview(loginDescription)
         loginCard.addSubview(loginButton)
-        self.addSubview(loginCard)
 
         // 앱 소개 카드 introCard 추가
         let introCard = UIView()
         introCard.translatesAutoresizingMaskIntoConstraints = false
         introCard.backgroundColor = .white
         introCard.layer.cornerRadius = 16
-        self.addSubview(introCard)
 
         let introTitle = UILabel()
         introTitle.text = "세잎이란?"
@@ -177,9 +187,6 @@ class ProfileView: UIView {
 
         // 오토레이아웃
         NSLayoutConstraint.activate([
-            loginCard.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: 20),
-            loginCard.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -20),
-            loginCard.topAnchor.constraint(equalTo: self.safeAreaLayoutGuide.topAnchor, constant: 20),
             
             iconContainer.centerXAnchor.constraint(equalTo: loginCard.centerXAnchor),
             iconContainer.topAnchor.constraint(equalTo: loginCard.topAnchor, constant: 20),
@@ -217,14 +224,142 @@ class ProfileView: UIView {
             managerSignupButton.leadingAnchor.constraint(equalTo: loginCard.centerXAnchor, constant: 40),
             managerSignupButton.bottomAnchor.constraint(equalTo: loginCard.bottomAnchor, constant: -24),
 
-            // introCard
-            introCard.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: 20),
-            introCard.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -20),
-            introCard.topAnchor.constraint(equalTo: loginCard.bottomAnchor, constant: 20),
+            // introCard (leading/trailing handled by stackView)
             introTitle.topAnchor.constraint(equalTo: introCard.topAnchor, constant: 20),
             introTitle.leadingAnchor.constraint(equalTo: introCard.leadingAnchor, constant: 20),
             introTitle.trailingAnchor.constraint(equalTo: introCard.trailingAnchor, constant: -20),
             lastItemBottom.constraint(equalTo: introCard.bottomAnchor, constant: -20)
+        ])
+        
+        // MARK: - Support Card (고객지원)
+        let supportCard = UIView()
+        supportCard.translatesAutoresizingMaskIntoConstraints = false
+        supportCard.backgroundColor = .white
+        supportCard.layer.cornerRadius = 16
+        // supportCard will be added to stackView below
+
+        // 수직 스택 뷰 (supportStack)
+        let supportStack = UIStackView()
+        supportStack.axis = .vertical
+        supportStack.spacing = 8
+        supportStack.translatesAutoresizingMaskIntoConstraints = false
+        supportCard.addSubview(supportStack)
+
+        // 제목
+        let supportTitle = UILabel()
+        supportTitle.text = "고객지원"
+        supportTitle.font = UIFont.boldSystemFont(ofSize: 17)
+        supportTitle.translatesAutoresizingMaskIntoConstraints = false
+        supportStack.addArrangedSubview(supportTitle)
+
+        // 부제목 (optional, 예시)
+        let supportSubtitle = UILabel()
+        supportSubtitle.text = "서비스 이용에 도움이 필요하신가요?"
+        supportSubtitle.font = UIFont.systemFont(ofSize: 13)
+        supportSubtitle.textColor = .secondaryLabel
+        supportSubtitle.translatesAutoresizingMaskIntoConstraints = false
+        supportStack.addArrangedSubview(supportSubtitle)
+
+        // --- 버튼 Row 생성 함수 ---
+        func makeSupportRow(iconName: String, title: String) -> UIStackView {
+            let iconView = UIImageView(image: UIImage(systemName: iconName))
+            iconView.tintColor = .label
+            iconView.contentMode = .scaleAspectFit
+            iconView.translatesAutoresizingMaskIntoConstraints = false
+            iconView.setContentHuggingPriority(.required, for: .horizontal)
+            iconView.setContentCompressionResistancePriority(.required, for: .horizontal)
+            iconView.widthAnchor.constraint(equalToConstant: 24).isActive = true
+            iconView.heightAnchor.constraint(equalToConstant: 24).isActive = true
+
+            let titleLabel = UILabel()
+            titleLabel.text = title
+            titleLabel.font = UIFont.systemFont(ofSize: 15, weight: .medium)
+            titleLabel.textColor = .label
+            titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+            let arrow = UIImageView(image: UIImage(systemName: "chevron.right"))
+            arrow.tintColor = .systemGray3
+            arrow.contentMode = .scaleAspectFit
+            arrow.translatesAutoresizingMaskIntoConstraints = false
+            arrow.setContentHuggingPriority(.required, for: .horizontal)
+            arrow.setContentCompressionResistancePriority(.required, for: .horizontal)
+            arrow.widthAnchor.constraint(equalToConstant: 16).isActive = true
+            arrow.heightAnchor.constraint(equalToConstant: 16).isActive = true
+
+            let rowStack = UIStackView(arrangedSubviews: [iconView, titleLabel, arrow])
+            rowStack.axis = .horizontal
+            rowStack.alignment = .center
+            rowStack.spacing = 10
+            rowStack.isLayoutMarginsRelativeArrangement = true
+            rowStack.layoutMargins = UIEdgeInsets(top: 0, left: 4, bottom: 0, right: 4)
+            rowStack.translatesAutoresizingMaskIntoConstraints = false
+            rowStack.backgroundColor = .clear
+            rowStack.isUserInteractionEnabled = true
+            return rowStack
+        }
+
+        // 약관 버튼 Row
+        let termsRow = makeSupportRow(iconName: "doc.text", title: "이용약관")
+        let termsButton = UIButton(type: .system)
+        termsButton.backgroundColor = .clear
+        termsButton.isUserInteractionEnabled = true
+        termsButton.translatesAutoresizingMaskIntoConstraints = false
+        termsButton.accessibilityLabel = "이용약관"
+        addTouchAnimation(to: termsButton)
+        termsRow.addSubview(termsButton)
+        // 버튼이 rowStack 전체를 덮도록
+        NSLayoutConstraint.activate([
+            termsButton.leadingAnchor.constraint(equalTo: termsRow.leadingAnchor),
+            termsButton.trailingAnchor.constraint(equalTo: termsRow.trailingAnchor),
+            termsButton.topAnchor.constraint(equalTo: termsRow.topAnchor),
+            termsButton.bottomAnchor.constraint(equalTo: termsRow.bottomAnchor)
+        ])
+        supportStack.addArrangedSubview(termsRow)
+
+        // 개인정보 처리방침 버튼 Row
+        let privacyRow = makeSupportRow(iconName: "lock.shield", title: "개인정보 처리방침")
+        let privacyButton = UIButton(type: .system)
+        privacyButton.backgroundColor = .clear
+        privacyButton.isUserInteractionEnabled = true
+        privacyButton.translatesAutoresizingMaskIntoConstraints = false
+        privacyButton.accessibilityLabel = "개인정보 처리방침"
+        addTouchAnimation(to: privacyButton)
+        privacyRow.addSubview(privacyButton)
+        NSLayoutConstraint.activate([
+            privacyButton.leadingAnchor.constraint(equalTo: privacyRow.leadingAnchor),
+            privacyButton.trailingAnchor.constraint(equalTo: privacyRow.trailingAnchor),
+            privacyButton.topAnchor.constraint(equalTo: privacyRow.topAnchor),
+            privacyButton.bottomAnchor.constraint(equalTo: privacyRow.bottomAnchor)
+        ])
+        supportStack.addArrangedSubview(privacyRow)
+
+        // supportStack 레이아웃
+        NSLayoutConstraint.activate([
+            // supportCard constraints for stackView context (leading/trailing handled by stackView)
+            supportStack.topAnchor.constraint(equalTo: supportCard.topAnchor, constant: 20),
+            supportStack.leadingAnchor.constraint(equalTo: supportCard.leadingAnchor, constant: 20),
+            supportStack.trailingAnchor.constraint(equalTo: supportCard.trailingAnchor, constant: -20),
+            supportStack.bottomAnchor.constraint(equalTo: supportCard.bottomAnchor, constant: -20),
+        ])
+
+        // MARK: - StackView에 카드 추가
+        contentStackView.addArrangedSubview(loginCard)
+        contentStackView.addArrangedSubview(introCard)
+        contentStackView.addArrangedSubview(supportCard)
+
+        // MARK: - ScrollView 및 StackView 제약
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: self.safeAreaLayoutGuide.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: self.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: self.safeAreaLayoutGuide.bottomAnchor),
+
+            contentStackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentStackView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: 20),
+            contentStackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -20),
+            contentStackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+
+            contentStackView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -40)
         ])
     }
 

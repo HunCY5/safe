@@ -357,7 +357,7 @@ private func setupConstraints() {
     ])
 
     NSLayoutConstraint.activate([
-        self.logoImageView.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 40),
+        self.logoImageView.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 20),
         self.logoImageView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
         self.logoImageView.widthAnchor.constraint(equalToConstant: 60),
         self.logoImageView.heightAnchor.constraint(equalToConstant: 50),
