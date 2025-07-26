@@ -9,6 +9,8 @@ import UIKit
 
 protocol ProfileViewDelegate: AnyObject {
     func didTapLoginButton()
+    func didTapWorkerSignupButton()
+    func didTapManagerSignupButton()
 }
 
 class ProfileView: UIView {
@@ -159,6 +161,7 @@ class ProfileView: UIView {
         workerSignupButton.titleLabel?.font = UIFont.systemFont(ofSize: 15, weight: .medium)
         workerSignupButton.translatesAutoresizingMaskIntoConstraints = false
         addTouchAnimation(to: workerSignupButton)
+        workerSignupButton.addTarget(self, action: #selector(workerSignupButtonTapped), for: .touchUpInside)
 
         let managerSignupButton = UIButton(type: .system)
         managerSignupButton.setTitle("관리자 가입", for: .normal)
@@ -166,6 +169,7 @@ class ProfileView: UIView {
         managerSignupButton.titleLabel?.font = UIFont.systemFont(ofSize: 15, weight: .medium)
         managerSignupButton.translatesAutoresizingMaskIntoConstraints = false
         addTouchAnimation(to: managerSignupButton)
+        managerSignupButton.addTarget(self, action: #selector(managerSignupButtonTapped), for: .touchUpInside)
 
         loginCard.addSubview(dividerLabel)
         loginCard.addSubview(workerSignupButton)
@@ -247,5 +251,13 @@ class ProfileView: UIView {
 
     @objc private func loginButtonTapped() {
         delegate?.didTapLoginButton()
+    }
+    
+    @objc private func workerSignupButtonTapped() {
+        delegate?.didTapWorkerSignupButton()
+    }
+
+    @objc private func managerSignupButtonTapped() {
+        delegate?.didTapManagerSignupButton()
     }
 }

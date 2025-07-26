@@ -2,6 +2,9 @@ import ProjectDescription
 
 let project = Project(
     name: "safe",
+    packages: [
+      .package(url: "https://github.com/firebase/firebase-ios-sdk.git", .upToNextMajor(from: "10.15.0"))
+      ],
     targets: [
         .target(
             name: "safe",
@@ -25,19 +28,28 @@ let project = Project(
                                 [
                                     "UISceneConfigurationName": "Default Configuration",
                                     "UISceneDelegateClassName": "$(PRODUCT_MODULE_NAME).SceneDelegate",
-
+                                    
                                 ]
                             ]
                         ]
-                    ]
+                    ],
+                    "UIUserInterfaceStyle": "Light"
                 ]
             ),
             sources: ["safe/Sources/**"],
             resources: [
                 "safe/Resources/**",
-                "safe/Sources/ML/Models/**"
+                "safe/Sources/ML/Models/**",
+                "safe/GoogleService-Info.plist"
             ],
-            dependencies: []
+            dependencies: [
+                .package(product: "FirebaseAnalytics"),
+                .package(product: "FirebaseAuth"),
+                .package(product: "FirebaseFirestore"),
+                .package(product: "FirebaseStorage"),
+                .package(product: "FirebaseDatabase"),
+                .package(product: "FirebaseMessaging")
+            ],
         ),
         .target(
             name: "safeTests",

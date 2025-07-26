@@ -14,6 +14,7 @@
 // =============================================================================
 
 import UIKit
+import FirebaseCore
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -24,6 +25,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+  
+      FirebaseApp.configure()
+      if FirebaseApp.app() != nil {
+          print("✅ Firebase 초기화 완료됨")
+      } else {
+          print("❌ Firebase가 초기화되지 않았습니다")
+      }
+      
     return true
   }
 

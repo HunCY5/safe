@@ -33,4 +33,14 @@ extension ProfileViewController: ProfileViewDelegate {
         let vc = ChoiceLoginViewController()
         navigationController?.pushViewController(vc, animated: true)
     }
+    
+    func didTapWorkerSignupButton() {
+        let vc = CrewSignUpViewController()
+        navigationController?.pushViewController(vc, animated: true)
+    }
+
+    func didTapManagerSignupButton() {
+        let vc = ManagerSignUpViewController()
+        navigationController?.pushViewController(vc, animated: true)
+    }
 }
