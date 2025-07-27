@@ -27,7 +27,6 @@ class CrewLoginViewController: UIViewController, CrewLoginViewDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         dismissKeyboardWhenTappedAround()
-        view.backgroundColor = .white
         
         crewLoginView.delegate = self
         crewLoginView.loginButton.addTarget(self, action: #selector(loginButtonTapped), for: .touchUpInside)

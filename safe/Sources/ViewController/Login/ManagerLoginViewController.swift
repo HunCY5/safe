@@ -26,7 +26,6 @@ class ManagerLoginViewController: UIViewController, ManagerLoginViewDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         dismissKeyboardWhenTappedAround()
-        view.backgroundColor = .white
         
         managerLoginView.delegate = self
         managerLoginView.loginButton.addTarget(self, action: #selector(loginButtonTapped), for: .touchUpInside)

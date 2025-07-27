@@ -12,7 +12,6 @@ class ChoiceLoginViewController: UIViewController, ChoiceLoginViewDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         dismissKeyboardWhenTappedAround()
-        view.backgroundColor = .white
 
         let choiceLoginView = ChoiceLoginView()
         choiceLoginView.translatesAutoresizingMaskIntoConstraints = false
