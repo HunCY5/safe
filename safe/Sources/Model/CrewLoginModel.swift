@@ -14,8 +14,8 @@ final class CrewLoginModel {
     private let db = Firestore.firestore()
 
     func login(empolyeeId: String, password: String, expectedType: String? = nil, completion: @escaping (Result<String, Error>) -> Void) {
-        let email = "\(empolyeeId)@safe.com"
-        Auth.auth().signIn(withEmail: email, password: password) { result, error in
+        let employeeId = "\(empolyeeId)@safe.com"
+        Auth.auth().signIn(withEmail: employeeId, password: password) { result, error in
             if let error = error as NSError? {
                 let authError = AuthErrorCode.Code(rawValue: error.code)
                 let message: String

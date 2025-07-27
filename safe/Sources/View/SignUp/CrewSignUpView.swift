@@ -493,4 +493,7 @@ func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive t
     @objc private func loginButtonTapped() {
         delegate?.didTapLoginButton()
     }
+    
 }
+
+

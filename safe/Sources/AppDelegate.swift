@@ -31,7 +31,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       FirebaseApp.configure()
 
       // 강제로 로그아웃 (자동 로그인 방지 목적)
-   //   try? Auth.auth().signOut()
+     try? Auth.auth().signOut()
 
       if let user = Auth.auth().currentUser {
           print("✅ 로그인됨: \(user.uid)")

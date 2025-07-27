@@ -9,14 +9,14 @@
 import UIKit
 import FirebaseAuth
 
-protocol LoginDelegate: AnyObject {
+protocol CrewLoginDelegate: AnyObject {
     func didLoginSuccessfully()
 }
 
 class CrewLoginViewController: UIViewController, CrewLoginViewDelegate {
     private let crewLoginView = CrewLoginView()
     private let crewLoginModel = CrewLoginModel()
-    weak var delegate: LoginDelegate?
+    weak var delegate: CrewLoginDelegate?
     var onLoginSuccess: (() -> Void)?
     
     override func loadView() {
