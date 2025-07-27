@@ -38,7 +38,7 @@ extension UIViewController {
     func dismissKeyboardWhenTappedAround() {
         let tapGesture = UITapGestureRecognizer(target: self,
                                                 action: #selector(dismissKeyboard))
-        tapGesture.cancelsTouchesInView = false  
+        tapGesture.cancelsTouchesInView = false
         view.addGestureRecognizer(tapGesture)
     }
 
