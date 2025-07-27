@@ -7,7 +7,13 @@
 
 import UIKit
 
+protocol CrewLoginViewDelegate: AnyObject {
+    func didTapLoginButton(id: String, password: String)
+}
+
 class CrewLoginView: UIView {
+    
+    weak var delegate: CrewLoginViewDelegate?
     
     private let logoImageView: UIImageView = {
         let imageView = UIImageView()
@@ -98,7 +104,7 @@ class CrewLoginView: UIView {
         return view
     }()
     
-    private let idTextField: UITextField = {
+     let employeeTextField: UITextField = {
         let textField = UITextField()
         textField.placeholder = "사번을 입력하세요"
         textField.backgroundColor = UIColor(red: 247/255, green: 248/255, blue: 250/255, alpha: 1)
@@ -126,7 +132,7 @@ class CrewLoginView: UIView {
         return textField
     }()
     
-    private let passwordTextField: UITextField = {
+    let passwordTextField: UITextField = {
         let textField = UITextField()
         textField.placeholder = "비밀번호를 입력하세요"
         textField.backgroundColor = UIColor(red: 247/255, green: 248/255, blue: 250/255, alpha: 1)
@@ -164,7 +170,7 @@ class CrewLoginView: UIView {
         return textField
     }()
     
-    private let loginButton: UIButton = {
+     let loginButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle(" 로그인", for: .normal)
         button.setImage(UIImage(systemName: "shield"), for: .normal)
@@ -225,19 +231,22 @@ class CrewLoginView: UIView {
 
         self.loginCardView.addSubview(idLabel)
         self.loginCardView.addSubview(pwLabel)
-        self.loginCardView.addSubview(self.idTextField)
+        self.loginCardView.addSubview(self.employeeTextField)
         self.loginCardView.addSubview(self.passwordTextField)
         self.loginCardView.addSubview(self.loginButton)
         self.loginCardView.addSubview(self.forgotPasswordButton)
+        
+        // 로그인 버튼에 액션 연결
+        self.loginButton.addTarget(self, action: #selector(loginButtonTapped), for: .touchUpInside)
         
         self.addSubview(self.guideCardView)
         
         NSLayoutConstraint.activate([
             idLabel.topAnchor.constraint(equalTo: self.loginCardView.topAnchor, constant: 20),
             idLabel.leadingAnchor.constraint(equalTo: self.loginCardView.leadingAnchor, constant: 16),
-            self.idTextField.topAnchor.constraint(equalTo: idLabel.bottomAnchor, constant: 8),
+            self.employeeTextField.topAnchor.constraint(equalTo: idLabel.bottomAnchor, constant: 8),
             
-            pwLabel.topAnchor.constraint(equalTo: self.idTextField.bottomAnchor, constant: 16),
+            pwLabel.topAnchor.constraint(equalTo: self.employeeTextField.bottomAnchor, constant: 16),
             pwLabel.leadingAnchor.constraint(equalTo: self.loginCardView.leadingAnchor, constant: 16),
             self.passwordTextField.topAnchor.constraint(equalTo: pwLabel.bottomAnchor, constant: 8),
         ])
@@ -260,9 +269,9 @@ class CrewLoginView: UIView {
             self.loginCardView.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: 24),
             self.loginCardView.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -24),
             
-            self.idTextField.leadingAnchor.constraint(equalTo: self.loginCardView.leadingAnchor, constant: 16),
-            self.idTextField.trailingAnchor.constraint(equalTo: self.loginCardView.trailingAnchor, constant: -16),
-            self.idTextField.heightAnchor.constraint(equalToConstant: 56),
+            self.employeeTextField.leadingAnchor.constraint(equalTo: self.loginCardView.leadingAnchor, constant: 16),
+            self.employeeTextField.trailingAnchor.constraint(equalTo: self.loginCardView.trailingAnchor, constant: -16),
+            self.employeeTextField.heightAnchor.constraint(equalToConstant: 56),
             
             self.passwordTextField.leadingAnchor.constraint(equalTo: self.loginCardView.leadingAnchor, constant: 16),
             self.passwordTextField.trailingAnchor.constraint(equalTo: self.loginCardView.trailingAnchor, constant: -16),
@@ -292,5 +301,14 @@ class CrewLoginView: UIView {
         self.passwordTextField.isSecureTextEntry.toggle()
         let imageName = self.passwordTextField.isSecureTextEntry ? "eye.slash" : "eye"
         sender.setImage(UIImage(systemName: imageName), for: .normal)
+    }
+
+    @objc private func loginButtonTapped() {
+        guard let id = employeeTextField.text, !id.isEmpty,
+              let password = passwordTextField.text, !password.isEmpty else {
+            print("❌ 사번 또는 비밀번호가 비어있습니다.")
+            return
+        }
+        delegate?.didTapLoginButton(id: id, password: password)
     }
 }

@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import FirebaseAuth
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
@@ -19,6 +20,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let window = UIWindow(windowScene: windowScene)
         
         let mainVC = MainTabBarController()
+        
+        // 로그인 여부 확인 후 tag3(Profile)로 이동
+        if Auth.auth().currentUser == nil {
+            mainVC.selectedIndex = 3
+        }
+
         window.rootViewController = mainVC
         
         self.window = window
@@ -31,7 +38,7 @@ extension UIViewController {
     func dismissKeyboardWhenTappedAround() {
         let tapGesture = UITapGestureRecognizer(target: self,
                                                 action: #selector(dismissKeyboard))
-        tapGesture.cancelsTouchesInView = false  // 버튼 클릭 등도 동작하게 유지
+        tapGesture.cancelsTouchesInView = false  
         view.addGestureRecognizer(tapGesture)
     }
 
@@ -39,5 +46,3 @@ extension UIViewController {
         view.endEditing(true)
     }
 }
-
-

@@ -14,6 +14,17 @@ protocol CrewSignUpViewDelegate: AnyObject {
 
 
 class CrewSignUpView: UIView, UIGestureRecognizerDelegate {
+    // MARK: - Duplicate Check Button
+    let duplicateCheckButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("중복확인", for: .normal)
+        button.setTitleColor(.white, for: .normal)
+        button.backgroundColor = .systemBlue
+        button.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
+        button.layer.cornerRadius = 12
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
 
     // MARK: - Delegate
     weak var delegate: CrewSignUpViewDelegate?
@@ -108,7 +119,7 @@ private let signUpCardView: UIView = {
     return view
 }()
 
-private let nameTextField: UITextField = {
+ let nameTextField: UITextField = {
     let textField = UITextField()
     textField.placeholder = "이름을 입력하세요"
     textField.backgroundColor = UIColor(red: 247/255, green: 248/255, blue: 250/255, alpha: 1)
@@ -137,7 +148,7 @@ private let nameTextField: UITextField = {
     return textField
 }()
 
-private let employeeNumberTextField: UITextField = {
+let employeeNumberTextField: UITextField = {
     let textField = UITextField()
     textField.placeholder = "사번을 입력하세요"
     textField.backgroundColor = UIColor(red: 247/255, green: 248/255, blue: 250/255, alpha: 1)
@@ -166,7 +177,7 @@ private let employeeNumberTextField: UITextField = {
     return textField
 }()
 
-private let phoneTextField: UITextField = {
+ let phoneTextField: UITextField = {
     let textField = UITextField()
     textField.placeholder = "연락처를 입력하세요(- 제외)"
     textField.keyboardType = .phonePad
@@ -196,7 +207,7 @@ private let phoneTextField: UITextField = {
     return textField
 }()
 
-private let confirmPasswordTextField: UITextField = {
+ let confirmPasswordTextField: UITextField = {
     let textField = UITextField()
     textField.placeholder = "비밀번호를 다시 입력하세요"
     textField.isSecureTextEntry = true
@@ -226,7 +237,17 @@ private let confirmPasswordTextField: UITextField = {
     return textField
 }()
 
-private let passwordTextField: UITextField = {
+ let passwordMatchLabel: UILabel = {
+    let label = UILabel()
+    label.font = .systemFont(ofSize: 13)
+    label.textColor = .red
+    label.numberOfLines = 1
+    label.textAlignment = .left
+    label.translatesAutoresizingMaskIntoConstraints = false
+    return label
+}()
+
+ let passwordTextField: UITextField = {
     let textField = UITextField()
     textField.placeholder = "비밀번호를 입력하세요"
     textField.backgroundColor = UIColor(red: 247/255, green: 248/255, blue: 250/255, alpha: 1)
@@ -265,7 +286,7 @@ private let passwordTextField: UITextField = {
     return textField
 }()
 
-private let signUpButton: UIButton = {
+ let signUpButton: UIButton = {
     let button = UIButton(type: .system)
     button.setTitle(" 회원가입", for: .normal)
     button.setImage(UIImage(systemName: "shield"), for: .normal)
@@ -279,7 +300,7 @@ private let signUpButton: UIButton = {
     return button
 }()
 
-private let loginButton: UIButton = {
+ let loginButton: UIButton = {
     let button = UIButton(type: .system)
     button.setTitle("이미 계정이 있으신가요? 로그인", for: .normal)
     button.setTitleColor(.systemBlue, for: .normal)
@@ -327,12 +348,14 @@ private func setupViews() {
     self.signUpCardView.addSubview(self.nameTextField)
     self.signUpCardView.addSubview(self.employeeNumberLabel)
     self.signUpCardView.addSubview(self.employeeNumberTextField)
+    self.signUpCardView.addSubview(self.duplicateCheckButton)
     self.signUpCardView.addSubview(self.phoneLabel)
     self.signUpCardView.addSubview(self.phoneTextField)
     self.signUpCardView.addSubview(self.passwordLabel)
     self.signUpCardView.addSubview(self.passwordTextField)
     self.signUpCardView.addSubview(self.confirmPasswordLabel)
     self.signUpCardView.addSubview(self.confirmPasswordTextField)
+    self.signUpCardView.addSubview(self.passwordMatchLabel)
     self.signUpCardView.addSubview(self.signUpButton)
     self.signUpCardView.addSubview(self.loginButton)
 
@@ -384,15 +407,20 @@ private func setupConstraints() {
         self.nameTextField.topAnchor.constraint(equalTo: self.nameLabel.bottomAnchor, constant: 4),
         self.nameTextField.heightAnchor.constraint(equalToConstant: 56),
 
-        // 사번 라벨 및 텍스트필드
+        // 사번 라벨, 텍스트필드, 중복확인 버튼
         self.employeeNumberLabel.leadingAnchor.constraint(equalTo: self.signUpCardView.leadingAnchor, constant: 16),
         self.employeeNumberLabel.trailingAnchor.constraint(equalTo: self.signUpCardView.trailingAnchor, constant: -16),
         self.employeeNumberLabel.topAnchor.constraint(equalTo: self.nameTextField.bottomAnchor, constant: 16),
 
         self.employeeNumberTextField.leadingAnchor.constraint(equalTo: self.signUpCardView.leadingAnchor, constant: 16),
-        self.employeeNumberTextField.trailingAnchor.constraint(equalTo: self.signUpCardView.trailingAnchor, constant: -16),
+        self.employeeNumberTextField.trailingAnchor.constraint(equalTo: self.duplicateCheckButton.leadingAnchor, constant: -8),
         self.employeeNumberTextField.topAnchor.constraint(equalTo: self.employeeNumberLabel.bottomAnchor, constant: 4),
         self.employeeNumberTextField.heightAnchor.constraint(equalToConstant: 56),
+
+        self.duplicateCheckButton.trailingAnchor.constraint(equalTo: self.signUpCardView.trailingAnchor, constant: -16),
+        self.duplicateCheckButton.centerYAnchor.constraint(equalTo: self.employeeNumberTextField.centerYAnchor),
+        self.duplicateCheckButton.widthAnchor.constraint(equalToConstant: 80),
+        self.duplicateCheckButton.heightAnchor.constraint(equalToConstant: 40),
 
         // 연락처 라벨 및 텍스트필드
         self.phoneLabel.leadingAnchor.constraint(equalTo: self.signUpCardView.leadingAnchor, constant: 16),
@@ -424,8 +452,13 @@ private func setupConstraints() {
         self.confirmPasswordTextField.topAnchor.constraint(equalTo: self.confirmPasswordLabel.bottomAnchor, constant: 4),
         self.confirmPasswordTextField.heightAnchor.constraint(equalToConstant: 56),
 
+        // 패스워드 매치 라벨
+        self.passwordMatchLabel.leadingAnchor.constraint(equalTo: self.signUpCardView.leadingAnchor, constant: 16),
+        self.passwordMatchLabel.trailingAnchor.constraint(equalTo: self.signUpCardView.trailingAnchor, constant: -16),
+        self.passwordMatchLabel.topAnchor.constraint(equalTo: self.confirmPasswordTextField.bottomAnchor, constant: 4),
+
         // 버튼들
-        self.signUpButton.topAnchor.constraint(equalTo: self.confirmPasswordTextField.bottomAnchor, constant: 24),
+        self.signUpButton.topAnchor.constraint(equalTo: self.passwordMatchLabel.bottomAnchor, constant: 16),
         self.signUpButton.leadingAnchor.constraint(equalTo: self.signUpCardView.leadingAnchor, constant: 16),
         self.signUpButton.trailingAnchor.constraint(equalTo: self.signUpCardView.trailingAnchor, constant: -16),
         self.signUpButton.heightAnchor.constraint(equalToConstant: 56),

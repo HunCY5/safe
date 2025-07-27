@@ -7,10 +7,11 @@
 
 import UIKit
 
-final class MainTabBarController: UITabBarController {
+final class MainTabBarController: UITabBarController, UITabBarControllerDelegate {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        self.delegate = self
         setupTabs()
     }
 
@@ -24,12 +25,14 @@ final class MainTabBarController: UITabBarController {
         let tripsVC = UINavigationController(rootViewController: CrewManageViewController())
         tripsVC.tabBarItem = UITabBarItem(title: "근로자", image: UIImage(systemName: "person.2"), tag: 2)
 
-//        let messageVC = UINavigationController(rootViewController: MessageViewController())
-//        messageVC.tabBarItem = UITabBarItem(title: "메시지", image: UIImage(systemName: "message"), tag: 3)
-
         let profileVC = UINavigationController(rootViewController: ProfileViewController())
         profileVC.tabBarItem = UITabBarItem(title: "프로필", image: UIImage(systemName: "person"), tag: 3)
 
         viewControllers = [homeVC, wishlistVC, tripsVC/*, messageVC*/, profileVC]
+    }
+    // UITabBarControllerDelegate 메서드
+    func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
+        // tag 3(Profile) 외 탭 비활성화
+        return viewController.tabBarItem.tag == 3
     }
 }

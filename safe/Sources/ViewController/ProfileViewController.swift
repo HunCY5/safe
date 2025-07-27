@@ -34,16 +34,19 @@ class ProfileViewController: UIViewController {
 extension ProfileViewController: ProfileViewDelegate {
     func didTapLoginButton() {
         let vc = ChoiceLoginViewController()
+        vc.hidesBottomBarWhenPushed = true
         navigationController?.pushViewController(vc, animated: true)
     }
     
     func didTapWorkerSignupButton() {
         let vc = CrewSignUpViewController()
+        vc.hidesBottomBarWhenPushed = true
         navigationController?.pushViewController(vc, animated: true)
     }
 
     func didTapManagerSignupButton() {
         let vc = ManagerSignUpViewController()
+        vc.hidesBottomBarWhenPushed = true
         navigationController?.pushViewController(vc, animated: true)
     }
 }

@@ -29,11 +29,13 @@ class ChoiceLoginViewController: UIViewController, ChoiceLoginViewDelegate {
 
     func didTapWorkerCard() {
         let vc = CrewLoginViewController()
+        vc.hidesBottomBarWhenPushed = true
         navigationController?.pushViewController(vc, animated: true)
     }
 
     func didTapManagerCard() {
         let vc = ManagerLoginViewController()
+        vc.hidesBottomBarWhenPushed = true
         navigationController?.pushViewController(vc, animated: true)
     }
 }
