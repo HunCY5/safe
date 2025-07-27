@@ -10,10 +10,10 @@ import FirebaseFirestore
 import FirebaseAuth
 
 class ManagerSignUpModel {
-    func checkEmployeeNumberDuplicate(employeeId: String, completion: @escaping (Result<Bool, Error>) -> Void) {
+    func checkManagerNumberDuplicate(managerId: String, completion: @escaping (Result<Bool, Error>) -> Void) {
         let db = Firestore.firestore()
         db.collection("users")
-            .whereField("managerId", isEqualTo: employeeId)
+            .whereField("managerId", isEqualTo: managerId)
             .getDocuments { snapshot, error in
                 if let error = error {
                     completion(.failure(error))

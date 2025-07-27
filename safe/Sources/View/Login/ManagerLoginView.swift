@@ -7,7 +7,13 @@
 
 import UIKit
 
+protocol ManagerLoginViewDelegate: AnyObject {
+    func didTapLoginButton(id: String, password: String)
+}
+
 class ManagerLoginView: UIView {
+    
+    weak var delegate: ManagerLoginViewDelegate?
     
     private let logoImageView: UIImageView = {
         let imageView = UIImageView()
@@ -52,20 +58,20 @@ class ManagerLoginView: UIView {
     
     private let guideCardView: UIView = {
         let view = UIView()
-        view.backgroundColor = UIColor(red: 255/255, green: 245/255, blue: 230/255, alpha: 1) // 연한 오렌지 배경
+        view.backgroundColor = UIColor(red: 255/255, green: 245/255, blue: 230/255, alpha: 1)
         view.layer.cornerRadius = 12
         view.translatesAutoresizingMaskIntoConstraints = false
-
+        
         let titleLabel = UILabel()
         titleLabel.text = "관리자 로그인 안내"
         titleLabel.font = .boldSystemFont(ofSize: 16)
         titleLabel.textColor = .systemOrange
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-
+        
         let guideText = [
             "사업자 등록번호는 회원가입 시에만 필요합니다",
             "관리자 계정으로 전체 현장을 관리할 수 있습니다",
-            "기술 지원: support@safeapp.com"
+            "기술 지원: support@safe.com"
         ]
         
         let stackView = UIStackView()
@@ -80,25 +86,25 @@ class ManagerLoginView: UIView {
             label.textColor = .systemOrange
             stackView.addArrangedSubview(label)
         }
-
+        
         view.addSubview(titleLabel)
         view.addSubview(stackView)
-
+        
         NSLayoutConstraint.activate([
             titleLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
             titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-
+            
             stackView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12),
             stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             stackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             stackView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -16)
         ])
-
+        
         return view
     }()
     
-    private let idTextField: UITextField = {
+    let idTextField: UITextField = {
         let textField = UITextField()
         textField.placeholder = "관리자 ID를 입력하세요"
         textField.backgroundColor = UIColor(red: 247/255, green: 248/255, blue: 250/255, alpha: 1)
@@ -127,7 +133,7 @@ class ManagerLoginView: UIView {
         return textField
     }()
     
-    private let passwordTextField: UITextField = {
+    let passwordTextField: UITextField = {
         let textField = UITextField()
         textField.placeholder = "비밀번호를 입력하세요"
         textField.backgroundColor = UIColor(red: 247/255, green: 248/255, blue: 250/255, alpha: 1)
@@ -166,7 +172,7 @@ class ManagerLoginView: UIView {
         return textField
     }()
     
-    private let loginButton: UIButton = {
+     let loginButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle(" 로그인", for: .normal)
         button.setImage(UIImage(systemName: "shield"), for: .normal)
@@ -218,13 +224,13 @@ class ManagerLoginView: UIView {
         idLabel.font = .systemFont(ofSize: 14, weight: .semibold)
         idLabel.textColor = .label
         idLabel.translatesAutoresizingMaskIntoConstraints = false
-
+        
         let pwLabel = UILabel()
         pwLabel.text = "비밀번호"
         pwLabel.font = .systemFont(ofSize: 14, weight: .semibold)
         pwLabel.textColor = .label
         pwLabel.translatesAutoresizingMaskIntoConstraints = false
-
+        
         self.loginCardView.addSubview(idLabel)
         self.loginCardView.addSubview(pwLabel)
         self.loginCardView.addSubview(self.idTextField)

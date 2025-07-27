@@ -8,6 +8,7 @@
 
 import UIKit
 import FirebaseAuth
+import FirebaseFirestore
 
 protocol CrewLoginDelegate: AnyObject {
     func didLoginSuccessfully()

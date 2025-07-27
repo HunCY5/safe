@@ -64,6 +64,8 @@ class ManagerSignUpViewController: UIViewController, ManagerSignUpViewDelegate {
         // 입력 값 변경 감지
         [managerSignUpView.nameTextField,
          managerSignUpView.phoneTextField,
+         managerSignUpView.businessNumberTextField,
+         managerSignUpView.companyNameTextField,
          managerSignUpView.ManagerIDTextField,
          managerSignUpView.passwordTextField,
          managerSignUpView.confirmPasswordTextField
@@ -74,7 +76,7 @@ class ManagerSignUpViewController: UIViewController, ManagerSignUpViewDelegate {
     @objc private func textFieldChanged() {
         let name = managerSignUpView.nameTextField.text ?? ""
         let phone = managerSignUpView.phoneTextField.text ?? ""
-        let employeeId = managerSignUpView.ManagerIDTextField.text ?? ""
+        let managerId = managerSignUpView.ManagerIDTextField.text ?? ""
         let password = managerSignUpView.passwordTextField.text ?? ""
         let confirm = managerSignUpView.confirmPasswordTextField.text ?? ""
         
@@ -91,7 +93,7 @@ class ManagerSignUpViewController: UIViewController, ManagerSignUpViewDelegate {
         }
         
         let isFormValid = !name.isEmpty &&
-        !employeeId.isEmpty &&
+        !managerId.isEmpty &&
         phone.count >= 10 &&
         phone.count <= 11 &&
         phone.allSatisfy { $0.isNumber } &&
@@ -199,7 +201,7 @@ class ManagerSignUpViewController: UIViewController, ManagerSignUpViewDelegate {
             return
         }
         
-        managerSignUpmodel.registerUser(name: name, phone: phone, companyName: companyName, businessNumber: businessNumber, managerId: managerId, password: businessNumber) { result in
+        managerSignUpmodel.registerUser(name: name, phone: phone, companyName: companyName, businessNumber: businessNumber, managerId: managerId, password: password) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success():

@@ -118,7 +118,7 @@ return button
         return label
     }()
     
-private let employeeNumberLabel: UILabel = {
+private let managerIdLabel: UILabel = {
     let label = UILabel()
     label.text = "관리자 ID"
     label.font = .systemFont(ofSize: 14, weight: .semibold)
@@ -447,7 +447,7 @@ private func setupViews() {
     self.signUpCardView.addSubview(self.verifyButton)
     // Add businessNumberStatusLabel below businessNumberTextField
     self.signUpCardView.addSubview(self.businessNumberStatusLabel)
-    self.signUpCardView.addSubview(self.employeeNumberLabel)
+    self.signUpCardView.addSubview(self.managerIdLabel)
     self.signUpCardView.addSubview(self.ManagerIDTextField)
     self.signUpCardView.addSubview(self.checkButton)
     self.signUpCardView.addSubview(self.phoneLabel)
@@ -536,13 +536,13 @@ NSLayoutConstraint.activate([
     self.businessNumberStatusLabel.trailingAnchor.constraint(equalTo: self.businessNumberTextField.trailingAnchor),
 
     // 관리자ID 라벨, 텍스트필드, 중복확인 버튼
-    self.employeeNumberLabel.leadingAnchor.constraint(equalTo: self.signUpCardView.leadingAnchor, constant: 16),
-    self.employeeNumberLabel.trailingAnchor.constraint(equalTo: self.signUpCardView.trailingAnchor, constant: -16),
-    self.employeeNumberLabel.topAnchor.constraint(equalTo: self.businessNumberStatusLabel.bottomAnchor, constant: 12),
+    self.managerIdLabel.leadingAnchor.constraint(equalTo: self.signUpCardView.leadingAnchor, constant: 16),
+    self.managerIdLabel.trailingAnchor.constraint(equalTo: self.signUpCardView.trailingAnchor, constant: -16),
+    self.managerIdLabel.topAnchor.constraint(equalTo: self.businessNumberStatusLabel.bottomAnchor, constant: 12),
 
     self.ManagerIDTextField.leadingAnchor.constraint(equalTo: self.signUpCardView.leadingAnchor, constant: 16),
     self.ManagerIDTextField.trailingAnchor.constraint(equalTo: self.checkButton.leadingAnchor, constant: -8),
-    self.ManagerIDTextField.topAnchor.constraint(equalTo: self.employeeNumberLabel.bottomAnchor, constant: 4),
+    self.ManagerIDTextField.topAnchor.constraint(equalTo: self.managerIdLabel.bottomAnchor, constant: 4),
     self.ManagerIDTextField.heightAnchor.constraint(equalToConstant: 40),
 
     self.checkButton.trailingAnchor.constraint(equalTo: self.signUpCardView.trailingAnchor, constant: -16),

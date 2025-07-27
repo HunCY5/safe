@@ -12,8 +12,8 @@ import FirebaseFirestore
 final class ManagerLoginModel {
     private let db = Firestore.firestore()
 
-    func login(empolyeeId: String, password: String, expectedType: String? = nil, completion: @escaping (Result<String, Error>) -> Void) {
-        let email = "\(empolyeeId)@safe.com"
+    func login(managerId: String, password: String, expectedType: String? = nil, completion: @escaping (Result<String, Error>) -> Void) {
+        let email = "\(managerId)@safe.com"
         Auth.auth().signIn(withEmail: email, password: password) { result, error in
             if let error = error as NSError? {
                 let authError = AuthErrorCode.Code(rawValue: error.code)
@@ -52,8 +52,8 @@ final class ManagerLoginModel {
                     if let data = snapshot?.data(), let type = data["Type"] as? String {
                         if let expected = expectedType, type != expected {
                             let message = expected == "crew"
-                                ? "근로자 계정으로 로그인할 수 없습니다."
-                                : "관리자 계정으로 로그인할 수 없습니다."
+                                ? "관리자 계정으로 로그인할 수 없습니다."
+                                : "근로자 계정으로 로그인할 수 없습니다."
                             return completion(.failure(NSError(domain: "Login", code: -3, userInfo: [NSLocalizedDescriptionKey: message])))
                         }
                         completion(.success(type))
