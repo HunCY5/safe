@@ -12,6 +12,10 @@ protocol ProfileViewDelegate: AnyObject {
     func didTapWorkerSignupButton()
     func didTapManagerSignupButton()
     func didTapLogoutButton()
+    func didTapClockIn()
+    func didTapClockOut()
+    func didTapBreak()
+    func didTapResume()
 }
 
 class ProfileView: UIView {
@@ -23,15 +27,15 @@ class ProfileView: UIView {
     private let isManager: Bool
     var contentStackView: UIStackView!
 
-    // 출퇴근/휴식/타이머 UI 및 상태 변수
-    private let clockInButton = UIButton(type: .system)
-    private let clockOutButton = UIButton(type: .system)
-    private let breakButton = UIButton(type: .system)
-    private let timerLabel = UILabel()
+    let clockInButton = UIButton(type: .system)
+    let clockOutButton = UIButton(type: .system)
+    let breakButton = UIButton(type: .system)
+    @objc let timerLabel = UILabel()
     private var timer: Timer?
     private var seconds: Int = 0
     private var isPaused: Bool = false
-    private let attendanceStackView = UIStackView()
+    let attendanceStackView = UIStackView()
+    var totalPausedSeconds: TimeInterval = 0
 
     init(frame: CGRect, isLoggedIn: Bool, userName: String, userId: String, isManager: Bool) {
         self.isLoggedIn = isLoggedIn
@@ -166,7 +170,6 @@ class ProfileView: UIView {
         supportCard.layer.shadowRadius = 4
         supportCard.layer.masksToBounds = false
 
-        // 수직 스택 뷰 (supportStack)
         let supportStack = UIStackView()
         supportStack.axis = .vertical
         supportStack.spacing = 8
@@ -561,7 +564,6 @@ class ProfileView: UIView {
             clockInButton.bottomAnchor.constraint(equalTo: parentView.bottomAnchor, constant: -20)
         ])
 
-        // 퇴근, 타이머, 휴식 스택뷰
         clockOutButton.setTitle("퇴근", for: .normal)
         clockOutButton.setTitleColor(.white, for: .normal)
         clockOutButton.backgroundColor = .systemRed
@@ -571,7 +573,7 @@ class ProfileView: UIView {
 
         breakButton.setTitle("휴식", for: .normal)
         breakButton.setTitleColor(.white, for: .normal)
-        breakButton.backgroundColor = .systemOrange
+        breakButton.backgroundColor = .systemGreen
         breakButton.layer.cornerRadius = 8
         breakButton.addTarget(self, action: #selector(handleBreak), for: .touchUpInside)
         breakButton.translatesAutoresizingMaskIntoConstraints = false
@@ -604,6 +606,7 @@ class ProfileView: UIView {
         clockInButton.isHidden = true
         attendanceStackView.isHidden = false
         startTimer()
+        delegate?.didTapClockIn()
     }
 
     @objc private func handleClockOut() {
@@ -614,11 +617,18 @@ class ProfileView: UIView {
         timerLabel.text = "00:00:00"
         breakButton.setTitle("휴식", for: .normal)
         isPaused = false
+        delegate?.didTapClockOut()
     }
 
     @objc private func handleBreak() {
         isPaused.toggle()
         breakButton.setTitle(isPaused ? "재개" : "휴식", for: .normal)
+        breakButton.backgroundColor = isPaused ? UIColor.systemOrange : UIColor.systemGreen
+        if isPaused {
+            delegate?.didTapBreak()
+        } else {
+            delegate?.didTapResume()
+        }
     }
 
     private func startTimer() {
@@ -627,16 +637,57 @@ class ProfileView: UIView {
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self = self, !self.isPaused else { return }
             self.seconds += 1
-            let hours = self.seconds / 3600
-            let minutes = (self.seconds % 3600) / 60
-            let secs = self.seconds % 60
-            self.timerLabel.text = String(format: "%02d:%02d:%02d", hours, minutes, secs)
+            self.timerLabel.text = self.formatTime(self.seconds)
         }
     }
 
-    private func stopTimer() {
+    /// Start timer with a specific elapsed time
+    func startTimer(withElapsed elapsed: Int) {
+        self.seconds = elapsed
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            self.seconds += 1
+            self.timerLabel.text = self.formatTime(self.seconds)
+        }
+    }
+
+    func formatTime(_ seconds: Int) -> String {
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        let secs = seconds % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, secs)
+    }
+
+    func stopTimer() {
         timer?.invalidate()
         timer = nil
+    }
+
+    // MARK: - 출퇴근/휴식/타이머 상태 구성 메서드
+    func configureAttendanceSection(working: Bool, resting: Bool, clockInTime: Date?, pauseTime: Date?) {
+        if working {
+            clockInButton.isHidden = true
+            attendanceStackView.isHidden = false
+            if let clockIn = clockInTime {
+                let referenceTime = resting ? (pauseTime ?? clockIn) : Date()
+                let elapsed = Int(referenceTime.timeIntervalSince(clockIn))
+                startTimer(withElapsed: elapsed)
+
+                if resting {
+                    stopTimer()
+                    breakButton.setTitle("재개", for: .normal)
+                    breakButton.backgroundColor = UIColor.systemOrange
+                } else {
+                    breakButton.setTitle("휴식", for: .normal)
+                    breakButton.backgroundColor = UIColor.systemGreen
+                }
+            }
+        } else {
+            clockInButton.isHidden = false
+            attendanceStackView.isHidden = true
+            stopTimer()
+        }
     }
     @objc private func logoutButtonTapped() {
         delegate?.didTapLogoutButton()

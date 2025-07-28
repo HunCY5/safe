@@ -159,7 +159,15 @@ class CrewSignUpViewController: UIViewController, CrewSignUpViewDelegate {
             return
         }
 
-        crewSignUpmodel.registerUser(name: name, phone: phone, companyName: companyName, employeeId: employeeId, password: password) { result in
+        crewSignUpmodel.registerUser(
+            name: name,
+            phone: phone,
+            companyName: companyName,
+            employeeId: employeeId,
+            password: password,
+            working: false,
+            resting: false
+        ) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success():
