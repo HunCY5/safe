@@ -122,25 +122,14 @@ extension ProfileViewController: ProfileViewDelegate {
             do {
                 try Auth.auth().signOut()
 
-                self.view.subviews.forEach { $0.removeFromSuperview() }
-
-                let profileView = ProfileView(
-                    frame: .zero,
-                    isLoggedIn: false,
-                    userName: "",
-                    userId: "",
-                    isManager: false
-                )
-                profileView.delegate = self
-                profileView.translatesAutoresizingMaskIntoConstraints = false
-                self.view.addSubview(profileView)
-
-                NSLayoutConstraint.activate([
-                    profileView.topAnchor.constraint(equalTo: self.view.topAnchor),
-                    profileView.bottomAnchor.constraint(equalTo: self.view.bottomAnchor),
-                    profileView.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
-                    profileView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor)
-                ])
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first {
+                    let tabBarController = MainTabBarController()
+                    tabBarController.selectedIndex = 3
+                    UIView.transition(with: window, duration: 0.4, options: .transitionCrossDissolve, animations: {
+                        window.rootViewController = tabBarController
+                    })
+                }
             } catch {
                 print("로그아웃 실패: \(error.localizedDescription)")
             }
@@ -148,4 +137,3 @@ extension ProfileViewController: ProfileViewDelegate {
         present(alert, animated: true)
     }
 }
-
