@@ -23,6 +23,16 @@ class ProfileView: UIView {
     private let isManager: Bool
     var contentStackView: UIStackView!
 
+    // 출퇴근/휴식/타이머 UI 및 상태 변수
+    private let clockInButton = UIButton(type: .system)
+    private let clockOutButton = UIButton(type: .system)
+    private let breakButton = UIButton(type: .system)
+    private let timerLabel = UILabel()
+    private var timer: Timer?
+    private var seconds: Int = 0
+    private var isPaused: Bool = false
+    private let attendanceStackView = UIStackView()
+
     init(frame: CGRect, isLoggedIn: Bool, userName: String, userId: String, isManager: Bool) {
         self.isLoggedIn = isLoggedIn
         self.userName = userName
@@ -60,88 +70,90 @@ class ProfileView: UIView {
             contentStackView.addArrangedSubview(makeLoginCard())
         }
 
-        let introCard = UIView()
-        introCard.translatesAutoresizingMaskIntoConstraints = false
-        introCard.backgroundColor = .white
-        introCard.layer.cornerRadius = 16
-        introCard.layer.shadowOpacity = 0.1
-        introCard.layer.shadowOffset = CGSize(width: 0, height: 2)
-        introCard.layer.shadowRadius = 4
-        introCard.layer.masksToBounds = false
+        if !isLoggedIn {
+            let introCard = UIView()
+            introCard.translatesAutoresizingMaskIntoConstraints = false
+            introCard.backgroundColor = .white
+            introCard.layer.cornerRadius = 16
+            introCard.layer.shadowOpacity = 0.1
+            introCard.layer.shadowOffset = CGSize(width: 0, height: 2)
+            introCard.layer.shadowRadius = 4
+            introCard.layer.masksToBounds = false
 
-        let introTitle = UILabel()
-        introTitle.text = "세잎이란?"
-        introTitle.font = UIFont.boldSystemFont(ofSize: 17)
-        introTitle.translatesAutoresizingMaskIntoConstraints = false
-        introCard.addSubview(introTitle)
+            let introTitle = UILabel()
+            introTitle.text = "세잎이란?"
+            introTitle.font = UIFont.boldSystemFont(ofSize: 17)
+            introTitle.translatesAutoresizingMaskIntoConstraints = false
+            introCard.addSubview(introTitle)
 
-        let items = [
-            ("실시간 안전 감시", "AI 기반 위험 상황 자동 감지", UIColor.systemGreen),
-            ("스마트 근로자 관리", "근무시간 관리 및 공지 기능", UIColor.systemBlue),
-            ("통합 관리 시스템", "위험 요인을 한눈에 관리", UIColor.systemOrange)
-        ]
+            let items = [
+                ("실시간 안전 감시", "AI 기반 위험 상황 자동 감지", UIColor.systemGreen),
+                ("스마트 근로자 관리", "근무시간 관리 및 공지 기능", UIColor.systemBlue),
+                ("통합 관리 시스템", "위험 요인을 한눈에 관리", UIColor.systemOrange)
+            ]
 
-        var lastItemBottom: NSLayoutYAxisAnchor = introTitle.bottomAnchor
+            var lastItemBottom: NSLayoutYAxisAnchor = introTitle.bottomAnchor
 
-        for (title, subtitle, color) in items {
-            let dot = UIView()
-            dot.translatesAutoresizingMaskIntoConstraints = false
-            dot.backgroundColor = color.withAlphaComponent(0.2)
-            dot.layer.cornerRadius = 10
+            for (title, subtitle, color) in items {
+                let dot = UIView()
+                dot.translatesAutoresizingMaskIntoConstraints = false
+                dot.backgroundColor = color.withAlphaComponent(0.2)
+                dot.layer.cornerRadius = 10
 
-            let innerDot = UIView()
-            innerDot.translatesAutoresizingMaskIntoConstraints = false
-            innerDot.backgroundColor = color
-            innerDot.layer.cornerRadius = 5
-            dot.addSubview(innerDot)
+                let innerDot = UIView()
+                innerDot.translatesAutoresizingMaskIntoConstraints = false
+                innerDot.backgroundColor = color
+                innerDot.layer.cornerRadius = 5
+                dot.addSubview(innerDot)
 
-            let titleLabel = UILabel()
-            titleLabel.text = title
-            titleLabel.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
-            titleLabel.translatesAutoresizingMaskIntoConstraints = false
+                let titleLabel = UILabel()
+                titleLabel.text = title
+                titleLabel.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
+                titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
-            let subtitleLabel = UILabel()
-            subtitleLabel.text = subtitle
-            subtitleLabel.font = UIFont.systemFont(ofSize: 13)
-            subtitleLabel.textColor = .secondaryLabel
-            subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+                let subtitleLabel = UILabel()
+                subtitleLabel.text = subtitle
+                subtitleLabel.font = UIFont.systemFont(ofSize: 13)
+                subtitleLabel.textColor = .secondaryLabel
+                subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
 
-            let stack = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel])
-            stack.axis = .vertical
-            stack.spacing = 2
-            stack.translatesAutoresizingMaskIntoConstraints = false
+                let stack = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel])
+                stack.axis = .vertical
+                stack.spacing = 2
+                stack.translatesAutoresizingMaskIntoConstraints = false
 
-            let row = UIStackView(arrangedSubviews: [dot, stack])
-            row.axis = .horizontal
-            row.spacing = 12
-            row.alignment = .top
-            row.translatesAutoresizingMaskIntoConstraints = false
+                let row = UIStackView(arrangedSubviews: [dot, stack])
+                row.axis = .horizontal
+                row.spacing = 12
+                row.alignment = .top
+                row.translatesAutoresizingMaskIntoConstraints = false
 
-            introCard.addSubview(row)
+                introCard.addSubview(row)
+
+                NSLayoutConstraint.activate([
+                    dot.widthAnchor.constraint(equalToConstant: 20),
+                    dot.heightAnchor.constraint(equalToConstant: 20),
+                    innerDot.widthAnchor.constraint(equalToConstant: 10),
+                    innerDot.heightAnchor.constraint(equalToConstant: 10),
+                    innerDot.centerXAnchor.constraint(equalTo: dot.centerXAnchor),
+                    innerDot.centerYAnchor.constraint(equalTo: dot.centerYAnchor),
+
+                    row.leadingAnchor.constraint(equalTo: introCard.leadingAnchor, constant: 20),
+                    row.trailingAnchor.constraint(equalTo: introCard.trailingAnchor, constant: -20),
+                    row.topAnchor.constraint(equalTo: lastItemBottom, constant: 16)
+                ])
+
+                lastItemBottom = row.bottomAnchor
+            }
 
             NSLayoutConstraint.activate([
-                dot.widthAnchor.constraint(equalToConstant: 20),
-                dot.heightAnchor.constraint(equalToConstant: 20),
-                innerDot.widthAnchor.constraint(equalToConstant: 10),
-                innerDot.heightAnchor.constraint(equalToConstant: 10),
-                innerDot.centerXAnchor.constraint(equalTo: dot.centerXAnchor),
-                innerDot.centerYAnchor.constraint(equalTo: dot.centerYAnchor),
-
-                row.leadingAnchor.constraint(equalTo: introCard.leadingAnchor, constant: 20),
-                row.trailingAnchor.constraint(equalTo: introCard.trailingAnchor, constant: -20),
-                row.topAnchor.constraint(equalTo: lastItemBottom, constant: 16)
+                introTitle.topAnchor.constraint(equalTo: introCard.topAnchor, constant: 20),
+                introTitle.leadingAnchor.constraint(equalTo: introCard.leadingAnchor, constant: 20),
+                introTitle.trailingAnchor.constraint(equalTo: introCard.trailingAnchor, constant: -20),
+                lastItemBottom.constraint(equalTo: introCard.bottomAnchor, constant: -20)
             ])
-
-            lastItemBottom = row.bottomAnchor
+            contentStackView.addArrangedSubview(introCard)
         }
-
-        NSLayoutConstraint.activate([
-            introTitle.topAnchor.constraint(equalTo: introCard.topAnchor, constant: 20),
-            introTitle.leadingAnchor.constraint(equalTo: introCard.leadingAnchor, constant: 20),
-            introTitle.trailingAnchor.constraint(equalTo: introCard.trailingAnchor, constant: -20),
-            lastItemBottom.constraint(equalTo: introCard.bottomAnchor, constant: -20)
-        ])
-        contentStackView.addArrangedSubview(introCard)
 
         // MARK: - Support Card (고객지원)
         let supportCard = UIView()
@@ -497,6 +509,7 @@ class ProfileView: UIView {
             idLabel.centerYAnchor.constraint(equalTo: roleLabel.centerYAnchor)
         ])
 
+        // 출근/퇴근/휴식/타이머 UI
         if isManager {
             let stat1 = makeStatCard(value: "0", title: "관리 근로자", bgColor: UIColor.systemGreen.withAlphaComponent(0.1), textColor: .systemGreen)
             let stat2 = makeStatCard(value: "0", title: "활성 카메라", bgColor: UIColor.systemBlue.withAlphaComponent(0.1), textColor: .systemBlue)
@@ -517,11 +530,109 @@ class ProfileView: UIView {
                 horizontalStack.bottomAnchor.constraint(equalTo: userCard.bottomAnchor, constant: -96)
             ])
         } else {
+            setupAttendanceUI(in: userCard, below: horizontalStack)
             NSLayoutConstraint.activate([
-                horizontalStack.bottomAnchor.constraint(equalTo: userCard.bottomAnchor, constant: -20)
+                attendanceStackView.bottomAnchor.constraint(equalTo: userCard.bottomAnchor, constant: -20)
             ])
         }
         return userCard
+    }
+
+    // MARK: - 출근/퇴근/휴식/타이머 UI 셋업 (userCard 내부에서 호출)
+    private func setupAttendanceUI(in parentView: UIView, below horizontalStack: UIStackView) {
+        // 출근 버튼
+        clockInButton.setTitle("출근", for: .normal)
+        clockInButton.setTitleColor(.white, for: .normal)
+        clockInButton.backgroundColor = .systemBlue
+        clockInButton.layer.cornerRadius = 8
+        clockInButton.addTarget(self, action: #selector(handleClockIn), for: .touchUpInside)
+        clockInButton.translatesAutoresizingMaskIntoConstraints = false
+        parentView.addSubview(clockInButton)
+
+        NSLayoutConstraint.activate([
+            clockInButton.topAnchor.constraint(equalTo: horizontalStack.bottomAnchor, constant: 24),
+            clockInButton.centerXAnchor.constraint(equalTo: parentView.centerXAnchor),
+            clockInButton.widthAnchor.constraint(equalToConstant: 200),
+            clockInButton.heightAnchor.constraint(equalToConstant: 32),
+            clockInButton.bottomAnchor.constraint(equalTo: parentView.bottomAnchor, constant: -20)
+        ])
+
+        // 퇴근, 타이머, 휴식 스택뷰
+        clockOutButton.setTitle("퇴근", for: .normal)
+        clockOutButton.setTitleColor(.white, for: .normal)
+        clockOutButton.backgroundColor = .systemRed
+        clockOutButton.layer.cornerRadius = 8
+        clockOutButton.addTarget(self, action: #selector(handleClockOut), for: .touchUpInside)
+        clockOutButton.translatesAutoresizingMaskIntoConstraints = false
+
+        breakButton.setTitle("휴식", for: .normal)
+        breakButton.setTitleColor(.white, for: .normal)
+        breakButton.backgroundColor = .systemOrange
+        breakButton.layer.cornerRadius = 8
+        breakButton.addTarget(self, action: #selector(handleBreak), for: .touchUpInside)
+        breakButton.translatesAutoresizingMaskIntoConstraints = false
+
+        timerLabel.text = "00:00:00"
+        timerLabel.font = .monospacedDigitSystemFont(ofSize: 16, weight: .medium)
+        timerLabel.textAlignment = .center
+        timerLabel.textColor = .black
+        timerLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        attendanceStackView.axis = .horizontal
+        attendanceStackView.spacing = 12
+        attendanceStackView.alignment = .center
+        attendanceStackView.translatesAutoresizingMaskIntoConstraints = false
+        attendanceStackView.addArrangedSubview(breakButton)
+        attendanceStackView.addArrangedSubview(timerLabel)
+        attendanceStackView.addArrangedSubview(clockOutButton)
+        attendanceStackView.isHidden = true
+        parentView.addSubview(attendanceStackView)
+
+        NSLayoutConstraint.activate([
+            attendanceStackView.topAnchor.constraint(equalTo: horizontalStack.bottomAnchor, constant: 16),
+            attendanceStackView.centerXAnchor.constraint(equalTo: parentView.centerXAnchor),
+            clockOutButton.widthAnchor.constraint(equalToConstant: 120),
+            breakButton.widthAnchor.constraint(equalToConstant: 120)
+        ])
+    }
+
+    @objc private func handleClockIn() {
+        clockInButton.isHidden = true
+        attendanceStackView.isHidden = false
+        startTimer()
+    }
+
+    @objc private func handleClockOut() {
+        clockInButton.isHidden = false
+        attendanceStackView.isHidden = true
+        stopTimer()
+        seconds = 0
+        timerLabel.text = "00:00:00"
+        breakButton.setTitle("휴식", for: .normal)
+        isPaused = false
+    }
+
+    @objc private func handleBreak() {
+        isPaused.toggle()
+        breakButton.setTitle(isPaused ? "재개" : "휴식", for: .normal)
+    }
+
+    private func startTimer() {
+        isPaused = false
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self, !self.isPaused else { return }
+            self.seconds += 1
+            let hours = self.seconds / 3600
+            let minutes = (self.seconds % 3600) / 60
+            let secs = self.seconds % 60
+            self.timerLabel.text = String(format: "%02d:%02d:%02d", hours, minutes, secs)
+        }
+    }
+
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
     }
     @objc private func logoutButtonTapped() {
         delegate?.didTapLogoutButton()
