@@ -58,6 +58,7 @@ class CrewSignUpViewController: UIViewController, CrewSignUpViewDelegate {
         // 입력 값이 변경될 때마다 유효성 확인
         [crewSignUpView.nameTextField,
          crewSignUpView.phoneTextField,
+         crewSignUpView.companyNameTextField,
          crewSignUpView.employeeNumberTextField,
          crewSignUpView.passwordTextField,
          crewSignUpView.confirmPasswordTextField
@@ -68,6 +69,7 @@ class CrewSignUpViewController: UIViewController, CrewSignUpViewDelegate {
     @objc private func textFieldChanged() {
         let name = crewSignUpView.nameTextField.text ?? ""
         let phone = crewSignUpView.phoneTextField.text ?? ""
+        let companyNameTextField = crewSignUpView.companyNameTextField.text ?? ""
         let employeeId = crewSignUpView.employeeNumberTextField.text ?? ""
         let password = crewSignUpView.passwordTextField.text ?? ""
         let confirm = crewSignUpView.confirmPasswordTextField.text ?? ""
@@ -86,6 +88,7 @@ class CrewSignUpViewController: UIViewController, CrewSignUpViewDelegate {
 
         let isFormValid = !name.isEmpty &&
                         !employeeId.isEmpty &&
+                        !companyNameTextField.isEmpty &&
                           phone.count >= 10 &&
                           phone.count <= 11 &&
                           phone.allSatisfy { $0.isNumber } &&
@@ -142,6 +145,7 @@ class CrewSignUpViewController: UIViewController, CrewSignUpViewDelegate {
     @objc private func didTapSignUpButton() {
         let name = crewSignUpView.nameTextField.text ?? ""
         let phone = crewSignUpView.phoneTextField.text ?? ""
+        let companyName = crewSignUpView.companyNameTextField.text ?? ""
         let employeeId = crewSignUpView.employeeNumberTextField.text ?? ""
         let password = crewSignUpView.passwordTextField.text ?? ""
 
@@ -155,7 +159,7 @@ class CrewSignUpViewController: UIViewController, CrewSignUpViewDelegate {
             return
         }
 
-        crewSignUpmodel.registerUser(name: name, phone: phone, employeeId: employeeId, password: password) { result in
+        crewSignUpmodel.registerUser(name: name, phone: phone, companyName: companyName, employeeId: employeeId, password: password) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success():
@@ -164,8 +168,9 @@ class CrewSignUpViewController: UIViewController, CrewSignUpViewDelegate {
                         tabBarController.selectedIndex = 3
                         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                            let window = windowScene.windows.first {
-                            window.rootViewController = tabBarController
-                            window.makeKeyAndVisible()
+                            UIView.transition(with: window, duration: 0.4, options: .transitionCrossDissolve, animations: {
+                                window.rootViewController = tabBarController
+                            })
                         }
                     }
                 case .failure(let error):

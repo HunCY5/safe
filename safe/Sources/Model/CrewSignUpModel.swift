@@ -24,7 +24,7 @@ class CrewSignUpModel {
             }
     }
     
-    func registerUser(name: String, phone: String, employeeId: String, password: String, completion: @escaping (Result<Void, Error>) -> Void) {
+    func registerUser(name: String, phone: String, companyName: String, employeeId: String, password: String, completion: @escaping (Result<Void, Error>) -> Void) {
         let email = "\(employeeId)@safe.com"
         Auth.auth().createUser(withEmail: email, password: password) { result, error in
             if let error = error {
@@ -41,6 +41,7 @@ class CrewSignUpModel {
             let userData: [String: Any] = [
                 "uid": uid,
                 "name": name,
+                "companyName": companyName,
                 "employeeId": employeeId,
                 "phoneNumber": phone,
                 "Type": "crew"

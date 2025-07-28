@@ -14,7 +14,7 @@ protocol CrewLoginDelegate: AnyObject {
     func didLoginSuccessfully()
 }
 
-class CrewLoginViewController: UIViewController, CrewLoginViewDelegate {
+class CrewLoginViewController: UIViewController {
     private let crewLoginView = CrewLoginView()
     private let crewLoginModel = CrewLoginModel()
     weak var delegate: CrewLoginDelegate?
@@ -28,9 +28,7 @@ class CrewLoginViewController: UIViewController, CrewLoginViewDelegate {
         super.viewDidLoad()
         dismissKeyboardWhenTappedAround()
         
-        crewLoginView.delegate = self
         crewLoginView.loginButton.addTarget(self, action: #selector(loginButtonTapped), for: .touchUpInside)
-        // No need to add crewLoginView as subview or set constraints, since it's already the root view.
     }
     
     @objc private func loginButtonTapped() {
@@ -51,8 +49,9 @@ class CrewLoginViewController: UIViewController, CrewLoginViewDelegate {
                        let window = windowScene.windows.first {
                         let tabBarController = MainTabBarController()
                         tabBarController.selectedIndex = 3
-                        window.rootViewController = tabBarController
-                        window.makeKeyAndVisible()
+                        UIView.transition(with: window, duration: 0.4, options: .transitionCrossDissolve, animations: {
+                            window.rootViewController = tabBarController
+                        })
                     }
                 case .failure(let error):
                     try? Auth.auth().signOut()
@@ -60,11 +59,6 @@ class CrewLoginViewController: UIViewController, CrewLoginViewDelegate {
                 }
             }
         }
-    }
-    
-    func didTapLoginButton(id: String, password: String) {
-        print("✅ 전달 받은 사번: \(id), 비밀번호: \(password)")
-        // This method can be used if needed, or removed if not used.
     }
     
     private func showAlert(title: String, message: String) {

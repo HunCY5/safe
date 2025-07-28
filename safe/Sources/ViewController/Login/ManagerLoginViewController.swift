@@ -13,7 +13,7 @@ protocol ManagerLoginDelegate: AnyObject {
     func didLoginSuccessfully()
 }
 
-class ManagerLoginViewController: UIViewController, ManagerLoginViewDelegate {
+class ManagerLoginViewController: UIViewController{
     private let managerLoginView = ManagerLoginView()
     private let managerLoginModel = ManagerLoginModel()
     weak var delegate: ManagerLoginDelegate?
@@ -27,9 +27,7 @@ class ManagerLoginViewController: UIViewController, ManagerLoginViewDelegate {
         super.viewDidLoad()
         dismissKeyboardWhenTappedAround()
         
-        managerLoginView.delegate = self
         managerLoginView.loginButton.addTarget(self, action: #selector(loginButtonTapped), for: .touchUpInside)
-        // No need to add crewLoginView as subview or set constraints, since it's already the root view.
     }
     
     @objc private func loginButtonTapped() {
@@ -50,8 +48,9 @@ class ManagerLoginViewController: UIViewController, ManagerLoginViewDelegate {
                        let window = windowScene.windows.first {
                         let tabBarController = MainTabBarController()
                         tabBarController.selectedIndex = 3
-                        window.rootViewController = tabBarController
-                        window.makeKeyAndVisible()
+                        UIView.transition(with: window, duration: 0.4, options: .transitionCrossDissolve, animations: {
+                            window.rootViewController = tabBarController
+                        })
                     }
                 case .failure(let error):
                     try? Auth.auth().signOut()
@@ -61,10 +60,7 @@ class ManagerLoginViewController: UIViewController, ManagerLoginViewDelegate {
         }
     }
     
-    func didTapLoginButton(id: String, password: String) {
-        print("✅ 전달 받은 관리자ID: \(id), 비밀번호: \(password)")
-        // This method can be used if needed, or removed if not used.
-    }
+ 
     
     private func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)

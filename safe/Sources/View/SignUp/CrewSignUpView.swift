@@ -51,6 +51,44 @@ class CrewSignUpView: UIView, UIGestureRecognizerDelegate {
         return label
     }()
 
+    private let companyNameLabel: UILabel = {
+        let label = UILabel()
+        label.text = "회사명"
+        label.font = .systemFont(ofSize: 14, weight: .semibold)
+        label.textColor = .darkGray
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+
+    let companyNameTextField: UITextField = {
+        let textField = UITextField()
+        textField.placeholder = "회사명을 입력하세요"
+        textField.backgroundColor = UIColor(red: 247/255, green: 248/255, blue: 250/255, alpha: 1)
+        textField.font = .systemFont(ofSize: 16, weight: .semibold)
+        textField.textColor = .darkGray
+        textField.layer.cornerRadius = 12
+        textField.layer.borderWidth = 1
+        textField.layer.borderColor = UIColor(red: 230/255, green: 232/255, blue: 235/255, alpha: 1).cgColor
+        textField.autocapitalizationType = .none
+        textField.autocorrectionType = .no
+        textField.clearButtonMode = .whileEditing
+        textField.translatesAutoresizingMaskIntoConstraints = false
+
+        let imageView = UIImageView(image: UIImage(systemName: "building.2"))
+        imageView.tintColor = .systemGray
+        imageView.contentMode = .scaleAspectFit
+        imageView.frame = CGRect(x: 0, y: 0, width: 24, height: 24)
+
+        let containerView = UIView(frame: CGRect(x: 0, y: 0, width: 30, height: 24))
+        containerView.addSubview(imageView)
+        imageView.center = containerView.center
+
+        textField.leftView = containerView
+        textField.leftViewMode = .always
+
+        return textField
+    }()
+
     private let phoneLabel: UILabel = {
         let label = UILabel()
         label.text = "연락처"
@@ -87,7 +125,7 @@ private let logoImageView: UIImageView = {
     return imageView
 }()
 
-private let appNameLabel: UILabel = { // 이곳에 앱 아이콘
+private let appNameLabel: UILabel = {
     let label = UILabel()
     label.text = "근로자 회원가입"
     label.font = .systemFont(ofSize: 24, weight: .heavy)
@@ -328,13 +366,11 @@ required init?(coder: NSCoder) {
 // MARK: - Setup
 
 private func setupViews() {
-    // Set up scrollView and contentView first
     scrollView.translatesAutoresizingMaskIntoConstraints = false
     contentView.translatesAutoresizingMaskIntoConstraints = false
     self.addSubview(scrollView)
     scrollView.addSubview(contentView)
 
-    // Add touch delays/cancellation settings
     scrollView.delaysContentTouches = false
     scrollView.canCancelContentTouches = true
 
@@ -343,12 +379,13 @@ private func setupViews() {
     contentView.addSubview(self.subtitleLabel)
     contentView.addSubview(self.signUpCardView)
 
-    // Add labels and text fields in order
     self.signUpCardView.addSubview(self.nameLabel)
     self.signUpCardView.addSubview(self.nameTextField)
     self.signUpCardView.addSubview(self.employeeNumberLabel)
     self.signUpCardView.addSubview(self.employeeNumberTextField)
     self.signUpCardView.addSubview(self.duplicateCheckButton)
+    self.signUpCardView.addSubview(self.companyNameLabel)
+    self.signUpCardView.addSubview(self.companyNameTextField)
     self.signUpCardView.addSubview(self.phoneLabel)
     self.signUpCardView.addSubview(self.phoneTextField)
     self.signUpCardView.addSubview(self.passwordLabel)
@@ -359,19 +396,16 @@ private func setupViews() {
     self.signUpCardView.addSubview(self.signUpButton)
     self.signUpCardView.addSubview(self.loginButton)
 
-    // Add target for loginButton
     self.loginButton.addTarget(self, action: #selector(loginButtonTapped), for: .touchUpInside)
 }
 
 private func setupConstraints() {
     NSLayoutConstraint.activate([
-        // scrollView fills the safe area
         scrollView.topAnchor.constraint(equalTo: self.safeAreaLayoutGuide.topAnchor),
         scrollView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
         scrollView.trailingAnchor.constraint(equalTo: self.trailingAnchor),
         scrollView.bottomAnchor.constraint(equalTo: self.bottomAnchor),
 
-        // contentView fills scrollView and matches width
         contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
         contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
         contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
@@ -422,10 +456,20 @@ private func setupConstraints() {
         self.duplicateCheckButton.widthAnchor.constraint(equalToConstant: 80),
         self.duplicateCheckButton.heightAnchor.constraint(equalToConstant: 40),
 
+        // 회사명 라벨 및 텍스트필드
+        self.companyNameLabel.leadingAnchor.constraint(equalTo: self.signUpCardView.leadingAnchor, constant: 16),
+        self.companyNameLabel.trailingAnchor.constraint(equalTo: self.signUpCardView.trailingAnchor, constant: -16),
+        self.companyNameLabel.topAnchor.constraint(equalTo: self.employeeNumberTextField.bottomAnchor, constant: 16),
+
+        self.companyNameTextField.leadingAnchor.constraint(equalTo: self.signUpCardView.leadingAnchor, constant: 16),
+        self.companyNameTextField.trailingAnchor.constraint(equalTo: self.signUpCardView.trailingAnchor, constant: -16),
+        self.companyNameTextField.topAnchor.constraint(equalTo: self.companyNameLabel.bottomAnchor, constant: 4),
+        self.companyNameTextField.heightAnchor.constraint(equalToConstant: 56),
+
         // 연락처 라벨 및 텍스트필드
         self.phoneLabel.leadingAnchor.constraint(equalTo: self.signUpCardView.leadingAnchor, constant: 16),
         self.phoneLabel.trailingAnchor.constraint(equalTo: self.signUpCardView.trailingAnchor, constant: -16),
-        self.phoneLabel.topAnchor.constraint(equalTo: self.employeeNumberTextField.bottomAnchor, constant: 16),
+        self.phoneLabel.topAnchor.constraint(equalTo: self.companyNameTextField.bottomAnchor, constant: 16),
 
         self.phoneTextField.leadingAnchor.constraint(equalTo: self.signUpCardView.leadingAnchor, constant: 16),
         self.phoneTextField.trailingAnchor.constraint(equalTo: self.signUpCardView.trailingAnchor, constant: -16),

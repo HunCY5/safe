@@ -210,8 +210,9 @@ class ManagerSignUpViewController: UIViewController, ManagerSignUpViewDelegate {
                         tabBarController.selectedIndex = 3
                         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                            let window = windowScene.windows.first {
-                            window.rootViewController = tabBarController
-                            window.makeKeyAndVisible()
+                            UIView.transition(with: window, duration: 0.4, options: .transitionCrossDissolve, animations: {
+                                window.rootViewController = tabBarController
+                            })
                         }
                     }
                 case .failure(let error):
