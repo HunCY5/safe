@@ -467,7 +467,11 @@ class ProfileView: UIView {
         roleLabel.widthAnchor.constraint(equalToConstant: 50).isActive = true
 
         let idLabel = UILabel()
-        idLabel.text = "ID: \(userId)"
+        if isManager {
+            idLabel.text = "관리자ID: \(userId)"
+        } else {
+            idLabel.text = "사번: \(userId)"
+        }
         idLabel.font = UIFont.systemFont(ofSize: 13)
         idLabel.textColor = .secondaryLabel
         idLabel.translatesAutoresizingMaskIntoConstraints = false
