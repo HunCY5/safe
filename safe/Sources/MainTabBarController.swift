@@ -14,20 +14,22 @@ final class MainTabBarController: UITabBarController, UITabBarControllerDelegate
         super.viewDidLoad()
         self.delegate = self
         setupTabs()
+        tabBar.tintColor = .black
+        tabBar.unselectedItemTintColor = UIColor.systemGray3
     }
 
     private func setupTabs() {
         let SafeVS = UINavigationController(rootViewController: SafetyManagerViewController())
-        SafeVS.tabBarItem = UITabBarItem(title: "안전감시", image: UIImage(systemName: "shield"), tag: 0)
+        SafeVS.tabBarItem = UITabBarItem(title: "안전감시", image: UIImage(systemName: "shield.fill"), tag: 0)
 
         let LogVC = UINavigationController(rootViewController: LiskLogViewController())
-        LogVC.tabBarItem = UITabBarItem(title: "위험로그", image: UIImage(systemName: "exclamationmark.triangle"), tag: 1)
+        LogVC.tabBarItem = UITabBarItem(title: "위험로그", image: UIImage(systemName: "exclamationmark.triangle.fill"), tag: 1)
 
         let CrewManageVC = UINavigationController(rootViewController: CrewManageViewController())
-        CrewManageVC.tabBarItem = UITabBarItem(title: "근로자", image: UIImage(systemName: "person.2"), tag: 2)
+        CrewManageVC.tabBarItem = UITabBarItem(title: "근로자", image: UIImage(systemName: "person.2.fill"), tag: 2)
 
         let profileVC = UINavigationController(rootViewController: ProfileViewController())
-        profileVC.tabBarItem = UITabBarItem(title: "프로필", image: UIImage(systemName: "person"), tag: 3)
+        profileVC.tabBarItem = UITabBarItem(title: "프로필", image: UIImage(systemName: "person.fill"), tag: 3)
 
         viewControllers = [SafeVS, LogVC, CrewManageVC, profileVC]
     }
