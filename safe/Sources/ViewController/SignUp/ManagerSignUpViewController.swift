@@ -51,7 +51,7 @@ class ManagerSignUpViewController: UIViewController, ManagerSignUpViewDelegate {
     }
     
     func didTapLoginButton() {
-        let loginVC = CrewLoginViewController()
+        let loginVC = ManagerLoginViewController()
         navigationController?.pushViewController(loginVC, animated: true)
     }
     
@@ -106,7 +106,6 @@ class ManagerSignUpViewController: UIViewController, ManagerSignUpViewDelegate {
     @objc private func keyboardWillShow(_ notification: Notification) {
         guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
         let keyboardHeight = keyboardFrame.height
-        // CrewSignUpView 내부의 scrollView를 찾음
         if let scrollView = managerSignUpView.subviews.first(where: { $0 is UIScrollView }) as? UIScrollView {
             scrollView.contentInset.bottom = keyboardHeight + 20
             scrollView.verticalScrollIndicatorInsets.bottom = keyboardHeight + 20
