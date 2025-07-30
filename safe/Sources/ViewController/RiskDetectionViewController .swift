@@ -37,7 +37,7 @@ final class WeightSelection: ObservableObject {
   @Published var selectedWeight: Int = 0
 }
 
-final class ViewController: UIViewController {
+final class RiskDetectionViewController: UIViewController {
 private let weightSelection = WeightSelection()
 private var cancellables = Set<AnyCancellable>()
 private let evaluationLabel: UILabel = {
@@ -279,7 +279,7 @@ private func updateModel() {
 }
 
 // MARK: - CameraFeedManagerDelegate Methods
-extension ViewController: CameraFeedManagerDelegate {
+extension RiskDetectionViewController : CameraFeedManagerDelegate {
 func cameraFeedManager(
   _ cameraFeedManager: CameraFeedManager, didOutput pixelBuffer: CVPixelBuffer
 ) {
@@ -322,7 +322,7 @@ static let minimumScore: Float32 = 0.2
 }
 
 // MARK: - UIPickerViewDataSource & Delegate
-extension ViewController: UIPickerViewDataSource, UIPickerViewDelegate {
+extension RiskDetectionViewController : UIPickerViewDataSource, UIPickerViewDelegate {
     func numberOfComponents(in pickerView: UIPickerView) -> Int {
         return 1
     }

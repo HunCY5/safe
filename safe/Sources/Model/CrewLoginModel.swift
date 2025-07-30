@@ -1,0 +1,78 @@
+//
+//  CrewLoginModel.swift
+//  safe
+//
+//  Created by 신찬솔 on 7/27/25.
+//
+
+
+import Foundation
+import FirebaseAuth
+import FirebaseFirestore
+
+final class CrewLoginModel {
+    private let db = Firestore.firestore()
+
+    func login(empolyeeId: String, password: String, expectedType: String? = nil, completion: @escaping (Result<String, Error>) -> Void) {
+        let employeeId = "\(empolyeeId)@safe.com"
+        Auth.auth().signIn(withEmail: employeeId, password: password) { result, error in
+            if let error = error as NSError? {
+                let authError = AuthErrorCode.Code(rawValue: error.code)
+                let message: String
+
+                switch authError {
+                case .userNotFound:
+                    message = "계정이 존재하지 않습니다."
+                case .wrongPassword:
+                    message = "비밀번호를 다시 확인해주세요."
+                default:
+                    message = "사번과 비밀번호를 확인해주세요."
+                }
+
+                completion(.failure(NSError(domain: "Login", code: error.code, userInfo: [NSLocalizedDescriptionKey: message])))
+                return
+            }
+
+            guard let uid = result?.user.uid else {
+                completion(.failure(NSError(domain: "Login", code: -1, userInfo: [NSLocalizedDescriptionKey: "사용자 정보를 가져올 수 없습니다."])))
+                return
+            }
+
+            self.updateUserSession(uid: uid) { error in
+                if let error = error {
+                    completion(.failure(error))
+                    return
+                }
+
+                let ref = self.db.collection("users").document(uid)
+                ref.getDocument { snapshot, error in
+                    if let error = error {
+                        completion(.failure(error))
+                        return
+                    }
+                    if let data = snapshot?.data(), let type = data["Type"] as? String {
+                        if let expected = expectedType, type != expected {
+                            let message = expected == "manager"
+                                ? "근로자 계정으로 로그인할 수 없습니다."
+                                : "관리자 계정으로 로그인할 수 없습니다."
+                            return completion(.failure(NSError(domain: "Login", code: -3, userInfo: [NSLocalizedDescriptionKey: message])))
+                        }
+                        completion(.success(type))
+                    } else {
+                        completion(.failure(NSError(domain: "Login", code: -2, userInfo: [NSLocalizedDescriptionKey: "사용자 유형(type)을 찾을 수 없습니다."])))
+                    }
+                }
+            }
+        }
+    }
+
+    private func updateUserSession(uid: String, completion: @escaping (Error?) -> Void) {
+        let ref = db.collection("users").document(uid)
+        ref.setData([
+            "loginStatus": true,
+            "lastLogin": Timestamp(date: Date())
+        ], merge: true) { error in
+            completion(error)
+        }
+    }
+}
