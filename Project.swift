@@ -44,7 +44,7 @@ let project = Project(
                 .glob(pattern: "safe/Resources/**", excluding: ["safe/Resources/DetectionYolov11.mlpackage/**"]),
                 .glob(pattern: "safe/Sources/ML/Models/**"),
                 
-            ],dencies: [
+            ],dependencies: [
                 .package(product: "FirebaseAnalytics"),
                 .package(product: "FirebaseAuth"),
                 .package(product: "FirebaseFirestore"),
