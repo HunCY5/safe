@@ -38,11 +38,13 @@ let project = Project(
             ),
             sources: ["safe/Sources/**"],
             resources: [
-                "safe/Resources/**",
-                "safe/Sources/ML/Models/**",
-                "safe/GoogleService-Info.plist"
-            ],
-            dependencies: [
+                // mlpackage는 폴더 참조로 번들에 포함
+                .folderReference(path: "safe/Resources/DetectionYolov11.mlpackage"),
+                // 나머지 일반 리소스(mlpackage 내부는 중복 포함되지 않도록 제외)
+                .glob(pattern: "safe/Resources/**", excluding: ["safe/Resources/DetectionYolov11.mlpackage/**"]),
+                .glob(pattern: "safe/Sources/ML/Models/**"),
+                
+            ],dencies: [
                 .package(product: "FirebaseAnalytics"),
                 .package(product: "FirebaseAuth"),
                 .package(product: "FirebaseFirestore"),
