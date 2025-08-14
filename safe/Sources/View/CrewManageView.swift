@@ -109,6 +109,12 @@ class CrewManageView: UIView {
             crewListSectionView.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -32)
         ])
 
+        crewListSectionView.onTapMessage = { [weak self] uid in
+            guard let self = self else { return }
+            self.selectedIndex = 2 
+            self.messageView.preselectRecipients([uid])
+        }
+
         addSubview(messageView)
         messageView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([

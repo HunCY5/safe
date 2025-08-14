@@ -31,6 +31,9 @@ final class CrewRowView: UIView {
     private let restButton = UIButton(type: .system)
     private let messageButton = UIButton(type: .system)
     
+    var onTapMessage: ((String) -> Void)?
+    private var currentModel: CrewMemberModel?
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
@@ -42,6 +45,7 @@ final class CrewRowView: UIView {
     }
 
     func configure(with model: CrewMemberModel) {
+        currentModel = model
         let initial = model.name.isEmpty ? "#" : String(model.name.prefix(1))
         badge.text = initial
 
@@ -177,6 +181,7 @@ final class CrewRowView: UIView {
         messageButton.layer.borderWidth = 1
         messageButton.layer.borderColor = UIColor.systemGray4.cgColor
         messageButton.contentEdgeInsets = UIEdgeInsets(top: 10, left: 14, bottom: 10, right: 14)
+        messageButton.addTarget(self, action: #selector(didTapMessageButton), for: .touchUpInside)
 
         let buttonSpacer = UIView()
         let buttonRow = UIStackView(arrangedSubviews: [restButton, buttonSpacer, messageButton])
@@ -213,6 +218,11 @@ final class CrewRowView: UIView {
 
     }
     
+    @objc private func didTapMessageButton() {
+        guard let uid = currentModel?.uid else { return }
+        onTapMessage?(uid)
+    }
+
     @objc private func didTapRestButton() {
         let alert = UIAlertController(title: nil, message: "휴식알림을 전송했습니다!", preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "확인", style: .default, handler: nil))
@@ -264,6 +274,8 @@ final class CrewListSectionView: UIView {
     private var companyListener: ListenerRegistration?
     private var userListeners: [String: ListenerRegistration] = [:]
     private var members: [String: CrewMemberModel] = [:]
+
+    var onTapMessage: ((String) -> Void)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -397,6 +409,9 @@ final class CrewListSectionView: UIView {
         for m in sorted {
             let row = CrewRowView()
             row.configure(with: m)
+            row.onTapMessage = { [weak self] uid in
+                self?.onTapMessage?(uid)
+            }
             stackView.addArrangedSubview(row)
         }
     }

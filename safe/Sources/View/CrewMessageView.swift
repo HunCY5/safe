@@ -93,20 +93,34 @@ final class CrewMessageView: UIView {
     }
     private var members: [Member] = []
     private var selectedUIDs: Set<String> = [] { didSet { updateSendButtonState() } }
-
+    private var pendingPreselect: Set<String> = []
+    
     private var companyListener: ListenerRegistration?
     private var memberListeners: [String: ListenerRegistration] = [:]
+    private var hiddenObserver: NSKeyValueObservation?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
         fetchMembers()
+        hiddenObserver = observe(\.isHidden, options: [.new]) { [weak self] _, change in
+            guard let self = self else { return }
+            if change.newValue == true {
+                self.clearRecipientSelection()
+            }
+        }
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupUI()
         fetchMembers()
+        hiddenObserver = observe(\.isHidden, options: [.new]) { [weak self] _, change in
+            guard let self = self else { return }
+            if change.newValue == true {
+                self.clearRecipientSelection()
+            }
+        }
     }
 
     deinit {
@@ -196,11 +210,35 @@ final class CrewMessageView: UIView {
             card.addTarget(self, action: #selector(didToggleRecipient(_:)), for: .touchUpInside)
             recipientsStack.addArrangedSubview(card)
         }
+        if !pendingPreselect.isEmpty {
+            selectedUIDs.formUnion(pendingPreselect)
+            pendingPreselect.removeAll()
+        }
+        for case let card as RecipientCardView in recipientsStack.arrangedSubviews {
+            if let uid = card.model?.uid {
+                card.isSelected = selectedUIDs.contains(uid)
+            }
+        }
+    }
+
+    private func clearRecipientSelection() {
+        selectedUIDs.removeAll()
+        for case let card as RecipientCardView in recipientsStack.arrangedSubviews {
+            card.isSelected = false
+        }
+        updateSendButtonState()
     }
 
     private func updateSendButtonState() {
         sendButton.alpha = selectedUIDs.isEmpty ? 0.5 : 1.0
         sendButton.isEnabled = !selectedUIDs.isEmpty
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil {
+            clearRecipientSelection()
+        }
     }
 
     @objc private func didToggleRecipient(_ sender: RecipientCardView) {
@@ -221,6 +259,24 @@ final class CrewMessageView: UIView {
         let alert = UIAlertController(title: nil, message: "메세지를 전송했습니다!", preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "확인", style: .default, handler: nil))
         presentAlert(alert)
+    }
+    
+    func preselectRecipients(_ uids: Set<String>) {
+        let known = Set(members.map { $0.uid })
+        let now = uids.intersection(known)
+        let later = uids.subtracting(known)
+
+        if !now.isEmpty {
+            selectedUIDs.formUnion(now)
+            for case let card as RecipientCardView in recipientsStack.arrangedSubviews {
+                if let uid = card.model?.uid {
+                    card.isSelected = selectedUIDs.contains(uid)
+                }
+            }
+        }
+        if !later.isEmpty {
+            pendingPreselect.formUnion(later)
+        }
     }
 
     func fetchMembers() {
@@ -292,7 +348,7 @@ private final class RecipientCardView: UIControl {
     private func setup() {
         translatesAutoresizingMaskIntoConstraints = false
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.backgroundColor = UIColor.secondarySystemBackground
+        container.backgroundColor = .white
         container.layer.cornerRadius = 14
         container.isUserInteractionEnabled = false
         container.layer.borderWidth = 1
@@ -350,7 +406,7 @@ private final class RecipientCardView: UIControl {
     private func updateAppearance() {
         container.layer.borderColor = (isSelected ? UIColor.systemOrange : UIColor.tertiaryLabel.withAlphaComponent(0.25)).cgColor
         container.layer.borderWidth = isSelected ? 2 : 1
-        container.backgroundColor = isSelected ? UIColor.systemOrange.withAlphaComponent(0.12) : UIColor.secondarySystemBackground
+        container.backgroundColor = isSelected ? UIColor.systemOrange.withAlphaComponent(0.12) : .white
     }
 
     override var isSelected: Bool {
