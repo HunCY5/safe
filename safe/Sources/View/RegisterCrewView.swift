@@ -7,8 +7,6 @@
 
 import UIKit
 
-
-
 class RegisterCrewView: UIView {
 
     private let cardView: UIView = {

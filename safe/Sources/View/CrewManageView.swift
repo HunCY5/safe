@@ -10,7 +10,6 @@ import UIKit
 
 class CrewManageView: UIView {
 
-    // MARK: - Properties
     private let containerView = UIView()
     private let stackView = UIStackView()
     private let statusButton = UIButton()
@@ -26,12 +25,13 @@ class CrewManageView: UIView {
     private let selectionIndicator = UIView()
     private var indicatorLeadingConstraint: NSLayoutConstraint?
     private var indicatorWidthConstraint: NSLayoutConstraint?
+    private let currentCrewView = CurrentCrewView()
+    private let crewListSectionView = CrewListSectionView()
     
     let registerCrewView = RegisterCrewView()
     
     var onTabSelected: ((Int) -> Void)?
 
-    // MARK: - Init
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupTabs()
@@ -42,7 +42,6 @@ class CrewManageView: UIView {
         setupTabs()
     }
 
-    // MARK: - Setup
     private func setupTabs() {
         containerView.backgroundColor = .white
         containerView.layer.cornerRadius = 16
@@ -91,6 +90,29 @@ class CrewManageView: UIView {
             selectionIndicator.heightAnchor.constraint(equalToConstant: 3)
         ])
         
+        addSubview(currentCrewView)
+        currentCrewView.translatesAutoresizingMaskIntoConstraints = false
+
+        addSubview(crewListSectionView)
+        crewListSectionView.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            currentCrewView.topAnchor.constraint(equalTo: containerView.bottomAnchor, constant: 16),
+            currentCrewView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            currentCrewView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            
+            crewListSectionView.topAnchor.constraint(equalTo: currentCrewView.bottomAnchor, constant: 16),
+            crewListSectionView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            crewListSectionView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            crewListSectionView.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -32)
+        ])
+
+        currentCrewView.setContentCompressionResistancePriority(.required, for: .vertical)
+        crewListSectionView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+
+        currentCrewView.isHidden = false
+        crewListSectionView.isHidden = false
+        
         addSubview(registerCrewView)
         registerCrewView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -121,10 +143,8 @@ class CrewManageView: UIView {
         button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
     }
 
-    // MARK: - Actions
     @objc private func tabTapped(_ sender: UIButton) {
         selectedIndex = sender.tag
-        // 콜백 또는 delegate로 선택 이벤트 전달 가능
     }
 
     private func updateTabSelection() {
@@ -149,6 +169,8 @@ class CrewManageView: UIView {
             ])
             self.layoutIfNeeded()
         }
+        currentCrewView.isHidden = selectedIndex != 0
         registerCrewView.isHidden = selectedIndex != 1
+        crewListSectionView.isHidden = selectedIndex != 0
     }
 }
