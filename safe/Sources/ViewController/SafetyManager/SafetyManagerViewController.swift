@@ -10,13 +10,27 @@ import UIKit
 final class SafetyManagerViewController: UIViewController {
     
     private enum UIConst {
+        /// 카메라 아이콘 배지 크기
         static let cameraBadgeSize: CGFloat = 84
-        static let cameraIconSize: CGFloat  = 36
+        /// 카메라 아이콘  크기
+        static let cameraIconSize: CGFloat  = 80
+        /// 공통 좌우 여백
         static let headerHInset: CGFloat    = 16
-        
-        static let smallBadgeSize: CGFloat  = 40
-        static let smallIconSize: CGFloat   = 24
-        static let smallBadgeCorner: CGFloat = 10
+
+        // 발생한 위험로그, AI 탐지기능 배지/아이콘 크기
+        /// 헤더 제목 왼쪽의 사각 배지 한 변 길이
+        static let headerBadgeSize: CGFloat  = 40
+        /// 헤더 제목 왼쪽 아이콘 크기
+        static let headerIconSize: CGFloat   = 50
+        /// 헤더 배지 모서리 라운드
+        static let headerBadgeCorner: CGFloat = 10
+
+        /// PPE(안전장비) 카드 아이콘 크기
+        static let ppeIconSize: CGFloat = 40
+        /// 자세 평가 카드 아이콘 크기
+        static let postureIconSize: CGFloat = 24
+        /// 카드 내부 아이콘(좌측)들의 정렬 기준을 맞추기 위한 슬롯(고정 폭 컨테이너) 너비
+        static let contentIconSlotWidth: CGFloat = 28
     }
     
     // MARK: - UI
@@ -45,9 +59,10 @@ final class SafetyManagerViewController: UIViewController {
     
     // 아이콘
     private let cameraBadge = UIView()     // 카메라 아이콘 배경
-    private let riskIconBadge = UIView()   // 위험로그 배경 (모서리 둥근 연분홍)
-    private let aiIconBadge = UIView()     // AI 탐지기능 배경 (모서리 둥근 하늘색)
+    private let riskIconBadge = UIView()   // 위험로그 배경
+    private let aiIconBadge = UIView()     // AI 탐지기능 배경
     
+    // 발생한 위험로그 좌측 아이콘
     private let riskHeaderIconView: UIImageView = {
         let iv = UIImageView(image: UIImage(named: "warning")?.withRenderingMode(.alwaysTemplate))
         iv.contentMode = .scaleAspectFit
@@ -55,7 +70,8 @@ final class SafetyManagerViewController: UIViewController {
         iv.translatesAutoresizingMaskIntoConstraints = false
         return iv
     }()
-    // TODO: Assets.xcassets 에 "cctv" PNG 추가 (외곽선 아이콘). 템플릿으로 파란 틴트 적용됨.
+
+    // CCTV 아이콘
     private let aiHeaderIconView: UIImageView = {
         let iv = UIImageView(image: UIImage(named: "cctv")?.withRenderingMode(.alwaysTemplate))
         iv.contentMode = .scaleAspectFit
@@ -63,7 +79,8 @@ final class SafetyManagerViewController: UIViewController {
         iv.translatesAutoresizingMaskIntoConstraints = false
         return iv
     }()
-    
+
+    // 카메라 아이콘
     private let cameraIconView: UIImageView = {
         let iv = UIImageView(image: UIImage(named: "camera")?.withRenderingMode(.alwaysTemplate))
         iv.contentMode = .scaleAspectFit
@@ -108,6 +125,7 @@ final class SafetyManagerViewController: UIViewController {
     
     // 위험로그 card
     private let riskCard = UIView()
+    private let aiGroupCard = UIView()
     private let riskTitleLabel: UILabel = {
         let lb = UILabel()
         lb.text = "발생한 위험로그"
@@ -210,7 +228,7 @@ final class SafetyManagerViewController: UIViewController {
         
         configureCard(headerCard)
         
-        // 카메라 배지 내부에 아이콘 배치
+        // 카메라 배지 옵션
         cameraBadge.translatesAutoresizingMaskIntoConstraints = false
         cameraBadge.backgroundColor = UIColor(red: 1.0, green: 0.73, blue: 0.36, alpha: 0.18)
         cameraBadge.layer.cornerRadius = UIConst.cameraBadgeSize / 2 // 84x84 기준
@@ -249,10 +267,10 @@ final class SafetyManagerViewController: UIViewController {
         
         configureCard(riskCard)
         
-        // 위험로그 아이콘
+        // 위험로그 아이콘/배지 옵션
         riskIconBadge.translatesAutoresizingMaskIntoConstraints = false
         riskIconBadge.backgroundColor = UIColor(red: 1.0, green: 0.90, blue: 0.93, alpha: 1.0)
-        riskIconBadge.layer.cornerRadius = UIConst.smallBadgeCorner
+        riskIconBadge.layer.cornerRadius = UIConst.headerBadgeCorner
         riskIconBadge.layer.masksToBounds = true
         
         riskHeaderIconView.tintColor = .systemRed
@@ -260,8 +278,8 @@ final class SafetyManagerViewController: UIViewController {
         NSLayoutConstraint.activate([
             riskHeaderIconView.centerXAnchor.constraint(equalTo: riskIconBadge.centerXAnchor),
             riskHeaderIconView.centerYAnchor.constraint(equalTo: riskIconBadge.centerYAnchor),
-            riskHeaderIconView.widthAnchor.constraint(equalToConstant: UIConst.smallIconSize),
-            riskHeaderIconView.heightAnchor.constraint(equalToConstant: UIConst.smallIconSize),
+            riskHeaderIconView.widthAnchor.constraint(equalToConstant: UIConst.headerIconSize),
+            riskHeaderIconView.heightAnchor.constraint(equalToConstant: UIConst.headerIconSize),
         ])
         
         let riskTop = UIStackView(arrangedSubviews: [riskIconBadge, riskTitleLabel, UIView()])
@@ -285,130 +303,189 @@ final class SafetyManagerViewController: UIViewController {
             riskInner.bottomAnchor.constraint(equalTo: riskCard.bottomAnchor, constant: -20),
             
             riskMoveButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            riskIconBadge.widthAnchor.constraint(equalToConstant: UIConst.smallBadgeSize),
-            riskIconBadge.heightAnchor.constraint(equalToConstant: UIConst.smallBadgeSize)
+            riskIconBadge.widthAnchor.constraint(equalToConstant: UIConst.headerBadgeSize),
+            riskIconBadge.heightAnchor.constraint(equalToConstant: UIConst.headerBadgeSize)
         ])
         
-        // MARK: - AI 기능 소개
+        // MARK: - AI 탐지기능 카드
+        configureCard(aiGroupCard)
+        let aiGroupStack = UIStackView()
+        aiGroupStack.axis = .vertical
+        aiGroupStack.spacing = 12
+        aiGroupStack.alignment = .fill
+        aiGroupStack.translatesAutoresizingMaskIntoConstraints = false
+        aiGroupCard.addSubview(aiGroupStack)
+        contentStack.addArrangedSubview(aiGroupCard)
+
+        // AI 탐지기능 헤더 아이콘/배지 옵션
+        
         aiIconBadge.translatesAutoresizingMaskIntoConstraints = false
         aiIconBadge.backgroundColor = UIColor(red: 0.88, green: 0.95, blue: 1.0, alpha: 1.0)
-        aiIconBadge.layer.cornerRadius = UIConst.smallBadgeCorner
+        aiIconBadge.layer.cornerRadius = UIConst.headerBadgeCorner
         aiIconBadge.layer.masksToBounds = true
-        
         aiHeaderIconView.tintColor = .systemBlue
         aiIconBadge.addSubview(aiHeaderIconView)
         NSLayoutConstraint.activate([
             aiHeaderIconView.centerXAnchor.constraint(equalTo: aiIconBadge.centerXAnchor),
             aiHeaderIconView.centerYAnchor.constraint(equalTo: aiIconBadge.centerYAnchor),
-            aiHeaderIconView.widthAnchor.constraint(equalToConstant: UIConst.smallIconSize),
-            aiHeaderIconView.heightAnchor.constraint(equalToConstant: UIConst.smallIconSize),
+            aiHeaderIconView.widthAnchor.constraint(equalToConstant: UIConst.headerIconSize),
+            aiHeaderIconView.heightAnchor.constraint(equalToConstant: UIConst.headerIconSize),
         ])
-        
+
         let aiHeaderTitle = UILabel()
         aiHeaderTitle.text = "AI 탐지기능"
         aiHeaderTitle.font = .systemFont(ofSize: 22, weight: .bold)
         aiHeaderTitle.textColor = .label
-        
+
+        let aiHeaderSubtitle = UILabel()
+        aiHeaderSubtitle.text = "카메라를 통한 실시간 안전 모니터링"
+        aiHeaderSubtitle.font = .systemFont(ofSize: 13, weight: .regular)
+        aiHeaderSubtitle.textColor = .secondaryLabel
+        aiHeaderSubtitle.numberOfLines = 0
+
         let aiHeaderRow = UIStackView(arrangedSubviews: [aiIconBadge, aiHeaderTitle, UIView()])
         aiHeaderRow.axis = .horizontal
         aiHeaderRow.alignment = .center
         aiHeaderRow.spacing = 10
-        contentStack.addArrangedSubview(aiHeaderRow)
-        
+
+        aiGroupStack.addArrangedSubview(aiHeaderRow)
+        aiGroupStack.addArrangedSubview(aiHeaderSubtitle)
+
         NSLayoutConstraint.activate([
-            aiIconBadge.widthAnchor.constraint(equalToConstant: UIConst.smallBadgeSize),
-            aiIconBadge.heightAnchor.constraint(equalToConstant: UIConst.smallBadgeSize)
+            aiIconBadge.widthAnchor.constraint(equalToConstant: UIConst.headerBadgeSize),
+            aiIconBadge.heightAnchor.constraint(equalToConstant: UIConst.headerBadgeSize),
+            
+            aiGroupStack.topAnchor.constraint(equalTo: aiGroupCard.topAnchor, constant: 16),
+            aiGroupStack.leadingAnchor.constraint(equalTo: aiGroupCard.leadingAnchor, constant: 16),
+            aiGroupStack.trailingAnchor.constraint(equalTo: aiGroupCard.trailingAnchor, constant: -16),
+            aiGroupStack.bottomAnchor.constraint(equalTo: aiGroupCard.bottomAnchor, constant: -16)
         ])
+
+        // 내부 미니 카드
         
-        // MARK: - YOLO 소개
-        let ppeCard = UIView()
-        configureCard(ppeCard)
-        
-        let ppeIcon = UIImageView(image: UIImage(systemName: "helmet") ?? UIImage(systemName: "exclamationmark.triangle"))
-        ppeIcon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
+        // PPE 카드
+        let ppeMini = UIView()
+        ppeMini.backgroundColor = UIColor(red: 1.0, green: 0.94, blue: 0.90, alpha: 1.0) // 연오렌지
+        ppeMini.layer.cornerRadius = 12
+        ppeMini.translatesAutoresizingMaskIntoConstraints = false
+
+        // PPE 아이콘
+        let ppeIcon = UIImageView(image: UIImage(named: "ppe")?.withRenderingMode(.alwaysTemplate))
         ppeIcon.tintColor = .systemOrange
-        
+        ppeIcon.contentMode = .scaleAspectFit
+        ppeIcon.translatesAutoresizingMaskIntoConstraints = false
+
         let ppeTitle = UILabel()
         ppeTitle.text = "안전장비 착용 탐지"
         ppeTitle.font = .systemFont(ofSize: 17, weight: .semibold)
         ppeTitle.textColor = .label
-        
+
         let ppeSubtitle = UILabel()
         ppeSubtitle.text = "YOLO 딥러닝 모델 활용"
         ppeSubtitle.font = .systemFont(ofSize: 13, weight: .regular)
         ppeSubtitle.textColor = .secondaryLabel
-        
-        let ppeHeaderRow = UIStackView(arrangedSubviews: [ppeIcon, ppeTitle, UIView()])
-        ppeHeaderRow.axis = .horizontal
-        ppeHeaderRow.spacing = 8
-        ppeHeaderRow.alignment = .center
-        
-        let ppeSubtitleRow = UIStackView(arrangedSubviews: [UIView(), ppeSubtitle, UIView()])
-        ppeSubtitleRow.axis = .horizontal
-        
+
         let ppeB1 = bulletLabel("안전모 착용 유무 실시간 감지")
         let ppeB2 = bulletLabel("안전조끼 착용 상태 모니터링")
         let ppeB3 = bulletLabel("미착용 시 즉시 알림 발송")
-        
-        let ppeVBox = UIStackView(arrangedSubviews: [ppeHeaderRow, ppeSubtitle, ppeB1, ppeB2, ppeB3])
-        ppeVBox.axis = .vertical
-        ppeVBox.spacing = 8
-        ppeVBox.translatesAutoresizingMaskIntoConstraints = false
-        
-        ppeCard.addSubview(ppeVBox)
-        contentStack.addArrangedSubview(ppeCard)
-        
+
+        // [정렬 규칙] PNG(Assets)와 SF Symbols의 내부 여백 차이를 제거하기 위해 고정 폭 슬롯을 사용
+        // 좌측 아이콘을 고정 폭 슬롯에 넣어 PNG/SF 차이와 무관하게 동일 시작선을 맞춤
+        let ppeIconSlot = UIView()
+        ppeIconSlot.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            ppeVBox.topAnchor.constraint(equalTo: ppeCard.topAnchor, constant: 16),
-            ppeVBox.leadingAnchor.constraint(equalTo: ppeCard.leadingAnchor, constant: 16),
-            ppeVBox.trailingAnchor.constraint(equalTo: ppeCard.trailingAnchor, constant: -16),
-            ppeVBox.bottomAnchor.constraint(equalTo: ppeCard.bottomAnchor, constant: -16),
-            ppeIcon.widthAnchor.constraint(equalToConstant: 24),
-            ppeIcon.heightAnchor.constraint(equalToConstant: 24)
+            ppeIconSlot.widthAnchor.constraint(equalToConstant: UIConst.contentIconSlotWidth),
+            ppeIconSlot.heightAnchor.constraint(greaterThanOrEqualToConstant: UIConst.ppeIconSize)
         ])
-        
-        // MARK: - 자세 평가 소개
-        let postureCard = UIView()
-        configureCard(postureCard)
-        
+        ppeIconSlot.addSubview(ppeIcon)
+        NSLayoutConstraint.activate([
+            ppeIcon.centerXAnchor.constraint(equalTo: ppeIconSlot.centerXAnchor),
+            ppeIcon.centerYAnchor.constraint(equalTo: ppeIconSlot.centerYAnchor)
+        ])
+
+        let ppeHeaderRow = UIStackView(arrangedSubviews: [ppeIconSlot, ppeTitle, UIView()])
+        ppeHeaderRow.axis = .horizontal
+        ppeHeaderRow.spacing = 8
+        ppeHeaderRow.alignment = .center
+
+        let ppeStack = UIStackView(arrangedSubviews: [ppeHeaderRow, ppeSubtitle, ppeB1, ppeB2, ppeB3])
+        ppeStack.axis = .vertical
+        ppeStack.spacing = 8
+        ppeStack.translatesAutoresizingMaskIntoConstraints = false
+
+        ppeMini.addSubview(ppeStack)
+        aiGroupStack.addArrangedSubview(ppeMini)
+
+        NSLayoutConstraint.activate([
+            ppeStack.topAnchor.constraint(equalTo: ppeMini.topAnchor, constant: 16),
+            ppeStack.leadingAnchor.constraint(equalTo: ppeMini.leadingAnchor, constant: 16),
+            ppeStack.trailingAnchor.constraint(equalTo: ppeMini.trailingAnchor, constant: -16),
+            ppeStack.bottomAnchor.constraint(equalTo: ppeMini.bottomAnchor, constant: -16),
+            ppeIcon.widthAnchor.constraint(equalToConstant: UIConst.ppeIconSize),    // PPE 아이콘 너비
+            ppeIcon.heightAnchor.constraint(equalToConstant: UIConst.ppeIconSize)   // PPE 아이콘 높이
+        ])
+
+        // 자세 평가 카드
+        let postureMini = UIView()
+        postureMini.backgroundColor = UIColor(red: 0.91, green: 0.96, blue: 1.0, alpha: 1.0)
+        postureMini.layer.cornerRadius = 12
+        postureMini.translatesAutoresizingMaskIntoConstraints = false
+
+        // 자세 평가 카드 좌측 아이콘
         let postureIcon = UIImageView(image: UIImage(systemName: "figure.walk"))
-        postureIcon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
+        postureIcon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 24, weight: .regular)
         postureIcon.tintColor = .systemBlue
-        
+        postureIcon.translatesAutoresizingMaskIntoConstraints = false
+
         let postureTitle = UILabel()
         postureTitle.text = "근로자 자세 평가"
         postureTitle.font = .systemFont(ofSize: 17, weight: .semibold)
         postureTitle.textColor = .label
-        
+
         let postureSubtitle = UILabel()
         postureSubtitle.text = "PoseNet & MoveNet 기반 분석"
         postureSubtitle.font = .systemFont(ofSize: 13, weight: .regular)
         postureSubtitle.textColor = .secondaryLabel
-        
+
         let postureB1 = bulletLabel("OWAS 공식을 통한 작업 자세 위험도 평가")
         let postureB2 = bulletLabel("REBA 분석으로 근골격계 부담 측정")
         let postureB3 = bulletLabel("RULA 평가를 통한 상지 작업 위험성 분석")
-        
-        let postureHeaderRow = UIStackView(arrangedSubviews: [postureIcon, postureTitle, UIView()])
+
+        // 두 카드의 좌측 아이콘 시작선을 동일하게 맞추기 위해 고정 폭 슬롯 사용
+        // 좌측 아이콘을 고정 폭 슬롯에 넣어 PNG/SF 차이와 무관하게 동일 시작선을 맞춤
+        let postureIconSlot = UIView()
+        postureIconSlot.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            postureIconSlot.widthAnchor.constraint(equalToConstant: UIConst.contentIconSlotWidth),
+            postureIconSlot.heightAnchor.constraint(greaterThanOrEqualToConstant: UIConst.postureIconSize)
+        ])
+        postureIcon.contentMode = .scaleAspectFit
+        postureIconSlot.addSubview(postureIcon)
+        NSLayoutConstraint.activate([
+            postureIcon.centerXAnchor.constraint(equalTo: postureIconSlot.centerXAnchor),
+            postureIcon.centerYAnchor.constraint(equalTo: postureIconSlot.centerYAnchor)
+        ])
+
+        let postureHeaderRow = UIStackView(arrangedSubviews: [postureIconSlot, postureTitle, UIView()])
         postureHeaderRow.axis = .horizontal
         postureHeaderRow.spacing = 8
         postureHeaderRow.alignment = .center
-        
-        let postureVBox = UIStackView(arrangedSubviews: [postureHeaderRow, postureSubtitle, postureB1, postureB2, postureB3])
-        postureVBox.axis = .vertical
-        postureVBox.spacing = 8
-        postureVBox.translatesAutoresizingMaskIntoConstraints = false
-        
-        postureCard.addSubview(postureVBox)
-        contentStack.addArrangedSubview(postureCard)
-        
+
+        let postureStack = UIStackView(arrangedSubviews: [postureHeaderRow, postureSubtitle, postureB1, postureB2, postureB3])
+        postureStack.axis = .vertical
+        postureStack.spacing = 8
+        postureStack.translatesAutoresizingMaskIntoConstraints = false
+
+        postureMini.addSubview(postureStack)
+        aiGroupStack.addArrangedSubview(postureMini)
+
         NSLayoutConstraint.activate([
-            postureVBox.topAnchor.constraint(equalTo: postureCard.topAnchor, constant: 16),
-            postureVBox.leadingAnchor.constraint(equalTo: postureCard.leadingAnchor, constant: 16),
-            postureVBox.trailingAnchor.constraint(equalTo: postureCard.trailingAnchor, constant: -16),
-            postureVBox.bottomAnchor.constraint(equalTo: postureCard.bottomAnchor, constant: -16),
-            postureIcon.widthAnchor.constraint(equalToConstant: 24),
-            postureIcon.heightAnchor.constraint(equalToConstant: 24)
+            postureStack.topAnchor.constraint(equalTo: postureMini.topAnchor, constant: 16),
+            postureStack.leadingAnchor.constraint(equalTo: postureMini.leadingAnchor, constant: 16),
+            postureStack.trailingAnchor.constraint(equalTo: postureMini.trailingAnchor, constant: -16),
+            postureStack.bottomAnchor.constraint(equalTo: postureMini.bottomAnchor, constant: -16),
+            postureIcon.widthAnchor.constraint(equalToConstant: UIConst.postureIconSize), // ← 자세 아이콘 크기(너비)
+            postureIcon.heightAnchor.constraint(equalToConstant: UIConst.postureIconSize)  // ← 자세 아이콘 크기(높이)
         ])
     }
     
