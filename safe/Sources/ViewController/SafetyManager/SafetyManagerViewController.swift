@@ -40,6 +40,15 @@ final class SafetyManagerViewController: UIViewController {
     
     // 상단바
     private let topBar = UIView()
+    
+    // 상단바 로고 아이콘
+    private let topLogoView: UIImageView = {
+        let iv = UIImageView(image: UIImage(named: "logo")?.withRenderingMode(.alwaysOriginal))
+        iv.contentMode = .scaleAspectFit
+        iv.setContentHuggingPriority(.required, for: .horizontal)
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        return iv
+    }()
     private let siteTitleLabel: UILabel = {
         let lb = UILabel()
         lb.text = "안전감시"
@@ -172,18 +181,28 @@ final class SafetyManagerViewController: UIViewController {
         topTextStack.alignment = .leading
         topTextStack.spacing = 2
         topTextStack.translatesAutoresizingMaskIntoConstraints = false
-        
-        topBar.addSubview(topTextStack)
-        
+
+
+        let topRow = UIStackView(arrangedSubviews: [topLogoView, topTextStack, UIView()])
+        topRow.axis = .horizontal
+        topRow.alignment = .center
+        topRow.spacing = 8
+        topRow.translatesAutoresizingMaskIntoConstraints = false
+        topBar.addSubview(topRow)
+
         NSLayoutConstraint.activate([
             topBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             topBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             topBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            
-            topTextStack.topAnchor.constraint(equalTo: topBar.topAnchor, constant: 12),
-            topTextStack.leadingAnchor.constraint(equalTo: topBar.leadingAnchor, constant: 16),
-            topTextStack.trailingAnchor.constraint(equalTo: topBar.trailingAnchor, constant: -16),
-            topTextStack.bottomAnchor.constraint(equalTo: topBar.bottomAnchor, constant: -12)
+
+            topRow.topAnchor.constraint(equalTo: topBar.topAnchor, constant: 12),
+            topRow.leadingAnchor.constraint(equalTo: topBar.leadingAnchor, constant: 16),
+            topRow.trailingAnchor.constraint(equalTo: topBar.trailingAnchor, constant: -16),
+            topRow.bottomAnchor.constraint(equalTo: topBar.bottomAnchor, constant: -12),
+
+            // 로고 크기
+            topLogoView.widthAnchor.constraint(equalToConstant: 50),
+            topLogoView.heightAnchor.constraint(equalToConstant: 50)
         ])
         
         setupLayout()
