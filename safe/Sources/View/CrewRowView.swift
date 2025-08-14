@@ -87,7 +87,7 @@ final class CrewRowView: UIView {
 
         avatarView.translatesAutoresizingMaskIntoConstraints = false
         avatarView.backgroundColor = UIColor.systemOrange.withAlphaComponent(0.18)
-        avatarView.layer.cornerRadius = 18
+        avatarView.layer.cornerRadius = 14
         avatarView.layer.masksToBounds = true
         avatarView.widthAnchor.constraint(equalToConstant: 72).isActive = true
         avatarView.heightAnchor.constraint(equalToConstant: 72).isActive = true

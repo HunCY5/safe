@@ -27,7 +27,7 @@ class CrewManageView: UIView {
     private var indicatorWidthConstraint: NSLayoutConstraint?
     private let currentCrewView = CurrentCrewView()
     private let crewListSectionView = CrewListSectionView()
-    
+    private let messageView = CrewMessageView()
     let registerCrewView = RegisterCrewView()
     
     var onTabSelected: ((Int) -> Void)?
@@ -96,6 +96,8 @@ class CrewManageView: UIView {
         addSubview(crewListSectionView)
         crewListSectionView.translatesAutoresizingMaskIntoConstraints = false
 
+        
+        
         NSLayoutConstraint.activate([
             currentCrewView.topAnchor.constraint(equalTo: containerView.bottomAnchor, constant: 16),
             currentCrewView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
@@ -106,6 +108,16 @@ class CrewManageView: UIView {
             crewListSectionView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
             crewListSectionView.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -32)
         ])
+
+        addSubview(messageView)
+        messageView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            messageView.topAnchor.constraint(equalTo: containerView.bottomAnchor, constant: 16),
+            messageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            messageView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            messageView.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -32)
+        ])
+        messageView.isHidden = true
 
         currentCrewView.setContentCompressionResistancePriority(.required, for: .vertical)
         crewListSectionView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
@@ -170,7 +182,8 @@ class CrewManageView: UIView {
             self.layoutIfNeeded()
         }
         currentCrewView.isHidden = selectedIndex != 0
-        registerCrewView.isHidden = selectedIndex != 1
         crewListSectionView.isHidden = selectedIndex != 0
+        registerCrewView.isHidden = selectedIndex != 1
+        messageView.isHidden = selectedIndex != 2
     }
 }

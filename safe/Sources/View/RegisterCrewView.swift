@@ -48,7 +48,6 @@ class RegisterCrewView: UIView {
         return textField
     }()
     
-    // infoLabel을 감싸는 카드 뷰 추가
     private let infoCardView: UIView = {
         let view = UIView()
         view.backgroundColor = UIColor(red: 0.9, green: 0.95, blue: 1.0, alpha: 1.0)
