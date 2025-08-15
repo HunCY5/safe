@@ -78,7 +78,7 @@ final class RiskLogView: UIView {
         return (container, titleLabel, countLabel)
     }
     
-    private lazy var helmetCard = makeCard(title: "안전모 미착용")
+    private lazy var helmetCard = makeCard(title: "헬멧 미착용")
     private lazy var vestCard   = makeCard(title: "조끼 미착용")
     private lazy var postureCard = makeCard(title: "자세 위험")
 

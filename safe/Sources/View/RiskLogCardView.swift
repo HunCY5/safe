@@ -261,7 +261,7 @@ final class RiskLogCardView: UIView {
             } else {
                 return "자세 위험"
             }
-        case "안전모": return "안전모 미착용"
+        case "안전모": return "헬멧 미착용"
         case "안전조끼": return "조끼 미착용"
         default: return type
         }
