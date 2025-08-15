@@ -92,6 +92,18 @@ final class RiskLogView: UIView {
         return s
     }()
     
+    private let riskLogCardView: RiskLogCardView = {
+        let view = RiskLogCardView()
+        view.backgroundColor = .white
+        view.layer.cornerRadius = 16
+        view.layer.shadowColor = UIColor.black.cgColor
+        view.layer.shadowOpacity = 0.1
+        view.layer.shadowRadius = 6
+        view.layer.shadowOffset = CGSize(width: 0, height: 4)
+        view.layer.masksToBounds = false
+        return view
+    }()
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         setup()
@@ -106,6 +118,7 @@ final class RiskLogView: UIView {
         backgroundColor = .systemBackground
         addSubview(dateSelectButton)
         addSubview(cardsStack)
+        addSubview(riskLogCardView)
         cardsStack.addArrangedSubview(helmetCard.container)
         cardsStack.addArrangedSubview(vestCard.container)
         cardsStack.addArrangedSubview(postureCard.container)
@@ -129,6 +142,14 @@ final class RiskLogView: UIView {
         helmetCard.container.heightAnchor.constraint(equalTo: helmetCard.container.widthAnchor).isActive = true
         vestCard.container.heightAnchor.constraint(equalTo: vestCard.container.widthAnchor).isActive = true
         postureCard.container.heightAnchor.constraint(equalTo: postureCard.container.widthAnchor).isActive = true
+
+        riskLogCardView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            riskLogCardView.topAnchor.constraint(equalTo: cardsStack.bottomAnchor, constant: 32),
+            riskLogCardView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
+            riskLogCardView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
+            riskLogCardView.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -16)
+        ])
     }
 
     func setDate(_ date: Date) {
@@ -149,5 +170,9 @@ final class RiskLogView: UIView {
 
     func updatePostureCount(_ value: Int) {
         postureCard.countLabel.text = String(value)
+    }
+
+    public func updateLogItems(_ items: [RiskLogCardView.LogItem]) {
+        riskLogCardView.updateLogs(items)
     }
 }

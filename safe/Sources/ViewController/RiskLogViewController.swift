@@ -52,6 +52,20 @@ final class RiskLogViewController: UIViewController {
         listenSafetyLog()
     }
     
+    // 타입 문자열 정규화: 다양한 표기(영문/공백/미착용 포함)를 하나의 카테고리로 통일
+    private func normalizeType(_ raw: String) -> String {
+        let s = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        // 안전모
+        if s.contains("helmet") || s.contains("안전모") { return "안전모" }
+        if s.contains("no-helmet") { return "안전모" }
+        // 안전조끼
+        if s.contains("vest") || s.contains("조끼") || s.contains("안전조끼") { return "안전조끼" }
+        if s.contains("no-vest") { return "안전조끼" }
+        // 위험자세
+        if s.contains("위험자세") || s.contains("posture") || s.contains("pose") { return "위험자세" }
+        return raw // 알 수 없는 값은 원본 유지
+    }
+
     private func listenSafetyLog() {
         listener?.remove()
         
@@ -66,6 +80,8 @@ final class RiskLogViewController: UIViewController {
             var helmetCount = 0
             var vestCount = 0
             var postureCount = 0
+            
+            var logItems: [RiskLogCardView.LogItem] = []
             
             let selectedDateString = self.dayFormatter.string(from: self.selectedDate)
             
@@ -84,8 +100,10 @@ final class RiskLogViewController: UIViewController {
                 if logDate != selectedDateString {
                     continue
                 }
+
+                let normType = self.normalizeType(type)
                 
-                switch type {
+                switch normType {
                 case "위험자세":
                     postureCount += 1
                 case "안전모":
@@ -96,11 +114,22 @@ final class RiskLogViewController: UIViewController {
                     break
                 }
                 
+                let item = RiskLogCardView.LogItem(
+                    type: normType,
+                    timeStamp: timestamp.dateValue(),
+                    sector: sector ?? "-",
+                    score: (normType == "위험자세") ? score : nil,
+                    poseType: poseType ?? ""
+                )
+                logItems.append(item)
             }
             
             self.riskLogView.updateHelmetCount(helmetCount)
             self.riskLogView.updateVestCount(vestCount)
             self.riskLogView.updatePostureCount(postureCount)
+            let sorted = logItems.sorted { $0.timeStamp > $1.timeStamp }
+            self.riskLogView.updateLogItems(sorted)
+            
         }
     }
 
