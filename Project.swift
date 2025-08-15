@@ -3,7 +3,8 @@ import ProjectDescription
 let project = Project(
     name: "safe",
     packages: [
-      .package(url: "https://github.com/firebase/firebase-ios-sdk.git", .upToNextMajor(from: "10.15.0"))
+      .package(url: "https://github.com/firebase/firebase-ios-sdk.git", .upToNextMajor(from: "10.15.0")),
+      .package(url: "https://github.com/onevcat/Kingfisher.git", .upToNextMajor(from: "7.0.0"))
       ],
     targets: [
         .target(
@@ -48,7 +49,8 @@ let project = Project(
                 .package(product: "FirebaseFirestore"),
                 .package(product: "FirebaseStorage"),
                 .package(product: "FirebaseDatabase"),
-                .package(product: "FirebaseMessaging")
+                .package(product: "FirebaseMessaging"),
+                .package(product: "Kingfisher")
             ],
         ),
         .target(
