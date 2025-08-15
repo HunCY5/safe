@@ -7,13 +7,14 @@
 
 import UIKit
 import FirebaseFirestore
+import Kingfisher
 
 final class RiskLogViewController: UIViewController {
     private let riskLogView = RiskLogView()
     private var selectedDate = Date()
     private var listener: ListenerRegistration?
     private let db = Firestore.firestore()
-
+    
     private lazy var formatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "ko_KR")
@@ -29,43 +30,54 @@ final class RiskLogViewController: UIViewController {
         f.dateFormat = "yyyy-MM-dd"
         return f
     }()
-
+    
     override func loadView() {
         view = riskLogView
     }
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
         navigationController?.navigationBar.prefersLargeTitles = true
         navigationItem.largeTitleDisplayMode = .always
         title = "위험 로그"
-
-        riskLogView.setDate(selectedDate) // 기본 텍스트: 현재 날짜
+        
+        riskLogView.setDate(selectedDate)
         riskLogView.setDateButtonTarget(self, action: #selector(presentDatePicker))
         riskLogView.onDateChanged = { [weak self] date in
             guard let self = self else { return }
             self.selectedDate = date
             self.listenSafetyLog()
         }
+        riskLogView.setLogDetailHandler { [weak self] item in
+            guard
+                let self = self,
+                let urlStr = item.imageUrl,
+                let url = URL(string: urlStr)
+            else {
+                let alert = UIAlertController(title: "이미지를 불러올 수 없습니다",
+                                              message: "유효한 이미지 주소가 없습니다.",
+                                              preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "확인", style: .default))
+                self?.present(alert, animated: true)
+                return
+            }
+            self.presentImageModal(url: url)
+        }
         
         listenSafetyLog()
     }
     
-    // 타입 문자열 정규화: 다양한 표기(영문/공백/미착용 포함)를 하나의 카테고리로 통일
     private func normalizeType(_ raw: String) -> String {
         let s = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        // 안전모
         if s.contains("helmet") || s.contains("안전모") { return "안전모" }
         if s.contains("no-helmet") { return "안전모" }
-        // 안전조끼
         if s.contains("vest") || s.contains("조끼") || s.contains("안전조끼") { return "안전조끼" }
         if s.contains("no-vest") { return "안전조끼" }
-        // 위험자세
         if s.contains("위험자세") || s.contains("posture") || s.contains("pose") { return "위험자세" }
-        return raw // 알 수 없는 값은 원본 유지
+        return raw
     }
-
+    
     private func listenSafetyLog() {
         listener?.remove()
         
@@ -96,11 +108,12 @@ final class RiskLogViewController: UIViewController {
                 let sector = data["sector"] as? String
                 let poseType = data["poseType"] as? String
                 let score = data["score"] as? Double
+                let imageUrl = data["imageUrl"] as? String
                 let logDate = self.dayFormatter.string(from: timestamp.dateValue())
                 if logDate != selectedDateString {
                     continue
                 }
-
+                
                 let normType = self.normalizeType(type)
                 
                 switch normType {
@@ -119,7 +132,8 @@ final class RiskLogViewController: UIViewController {
                     timeStamp: timestamp.dateValue(),
                     sector: sector ?? "-",
                     score: (normType == "위험자세") ? score : nil,
-                    poseType: poseType ?? ""
+                    poseType: poseType ?? "",
+                    imageUrl: imageUrl
                 )
                 logItems.append(item)
             }
@@ -132,10 +146,10 @@ final class RiskLogViewController: UIViewController {
             
         }
     }
-
+    
     @objc private func presentDatePicker() {
         let alert = UIAlertController(title: "날짜 선택", message: "\n\n\n\n\n\n\n\n", preferredStyle: .actionSheet)
-
+        
         let picker = UIDatePicker()
         picker.datePickerMode = .date
         picker.locale = Locale(identifier: "ko_KR")
@@ -144,7 +158,7 @@ final class RiskLogViewController: UIViewController {
         picker.date = selectedDate
         picker.frame = CGRect(x: 0, y: 30, width: alert.view.bounds.width - 20, height: 200)
         alert.view.addSubview(picker)
-
+        
         alert.addAction(UIAlertAction(title: "취소", style: .cancel, handler: nil))
         alert.addAction(UIAlertAction(title: "선택", style: .default, handler: { [weak self] _ in
             guard let self = self else { return }
@@ -153,13 +167,74 @@ final class RiskLogViewController: UIViewController {
             self.riskLogView.setDate(newDate)
             self.riskLogView.onDateChanged?(newDate)
         }))
-
+        
         if let pop = alert.popoverPresentationController {
             pop.sourceView = self.view
             pop.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.maxY - 1, width: 1, height: 1)
             pop.permittedArrowDirections = []
         }
-
+        
         present(alert, animated: true, completion: nil)
+    }
+    
+    private func presentImageModal(url: URL) {
+        let modalVC = UIViewController()
+        modalVC.view.backgroundColor = UIColor.black.withAlphaComponent(0.92)
+        modalVC.modalPresentationStyle = .overFullScreen
+
+        let imageView = UIImageView()
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
+        imageView.kf.indicatorType = .activity
+
+        let closeButton = UIButton(type: .system)
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        closeButton.setTitle("닫기", for: .normal)
+        closeButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        closeButton.setTitleColor(.white, for: .normal)
+        closeButton.addAction(UIAction(handler: { [weak modalVC] _ in
+            modalVC?.dismiss(animated: true)
+        }), for: .touchUpInside)
+
+        modalVC.view.addSubview(imageView)
+        modalVC.view.addSubview(closeButton)
+
+        NSLayoutConstraint.activate([
+            imageView.topAnchor.constraint(equalTo: modalVC.view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            imageView.leadingAnchor.constraint(equalTo: modalVC.view.leadingAnchor, constant: 16),
+            imageView.trailingAnchor.constraint(equalTo: modalVC.view.trailingAnchor, constant: -16),
+            imageView.bottomAnchor.constraint(equalTo: modalVC.view.safeAreaLayoutGuide.bottomAnchor, constant: -60),
+
+            closeButton.centerXAnchor.constraint(equalTo: modalVC.view.centerXAnchor),
+            closeButton.bottomAnchor.constraint(equalTo: modalVC.view.safeAreaLayoutGuide.bottomAnchor, constant: -12)
+        ])
+
+        let tapToClose = UITapGestureRecognizer(target: self, action: #selector(dismissTopMostModal))
+        modalVC.view.addGestureRecognizer(tapToClose)
+
+        present(modalVC, animated: true)
+
+        imageView.kf.setImage(
+            with: url,
+            options: [.transition(.fade(0.2)), .cacheOriginalImage],
+            completionHandler: { [weak modalVC] result in
+                if case .failure(let error) = result {
+                    let alert = UIAlertController(title: "이미지 로드 실패",
+                                                  message: error.localizedDescription,
+                                                  preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "확인", style: .default))
+                    modalVC?.present(alert, animated: true)
+                }
+            }
+        )
+    }
+
+    @objc private func dismissTopMostModal() {
+        presentedViewController?.dismiss(animated: true)
+    }
+    
+    @objc func detailButtonTapped(_ sender: UIButton) {
+        print("Detail button was tapped in RiskLogViewController")
     }
 }

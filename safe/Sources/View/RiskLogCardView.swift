@@ -15,6 +15,8 @@ final class RiskLogCardView: UIView {
         let sector: String
         let score: Double?
         let poseType: String?
+        let imageUrl: String?
+        
     }
 
     var onTapDetail: ((LogItem) -> Void)?
@@ -148,6 +150,10 @@ final class RiskLogCardView: UIView {
         detailButton.setPreferredSymbolConfiguration(UIImage.SymbolConfiguration(pointSize: 12, weight: .regular), forImageIn: .normal)
         detailButton.tintColor = .orange
         detailButton.contentHorizontalAlignment = .trailing
+        detailButton.addAction(UIAction(handler: { [weak self] _ in
+            guard let self = self else { return }
+            self.onTapDetail?(item)
+        }), for: .touchUpInside)
 
         let timeIcon = UIImageView(image: UIImage(systemName: "clock"))
         timeIcon.translatesAutoresizingMaskIntoConstraints = false

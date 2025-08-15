@@ -175,4 +175,8 @@ final class RiskLogView: UIView {
     public func updateLogItems(_ items: [RiskLogCardView.LogItem]) {
         riskLogCardView.updateLogs(items)
     }
+
+    public func setLogDetailHandler(_ handler: @escaping (RiskLogCardView.LogItem) -> Void) {
+        riskLogCardView.onTapDetail = handler
+    }
 }
