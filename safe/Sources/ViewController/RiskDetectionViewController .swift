@@ -38,8 +38,10 @@ final class WeightSelection: ObservableObject {
 }
 
 final class RiskDetectionViewController: UIViewController {
+
 private let weightSelection = WeightSelection()
 private var cancellables = Set<AnyCancellable>()
+
 private let evaluationLabel: UILabel = {
   let label = UILabel()
   label.text = "측정 결과 없음"
@@ -48,22 +50,40 @@ private let evaluationLabel: UILabel = {
   label.translatesAutoresizingMaskIntoConstraints = false
   return label
 }()
+
 private var overlayView: OverlayView!
+
+// PPE 통합
+private let ppeDetector = PPEDetector(modelName: "DetectionYolov11")
+private let ppeOverlayView = PPEDetectionOverlayView()
+private var latestImageSize: CGSize = .zero
+
+// 모델 설정
 private var modelType: ModelType = Constants.defaultModelType
 private var threadCount: Int = Constants.defaultThreadCount
 private var delegate: Delegates = Constants.defaultDelegate
 private let minimumScore = Constants.minimumScore
-
 
 private var imageViewFrame: CGRect?
 var overlayImage: OverlayView?
 private var poseEstimator: PoseEstimator?
 private var cameraFeedManager: CameraFeedManager!
 
-
 let queue = DispatchQueue(label: "serial_queue")
-
 var isRunning = false
+
+// 옵션 토글 상태
+private var isPostureOn = true
+private var isHelmetOn = true
+private var isVestOn = true
+
+// 옵션 버튼
+private let optionsButton: UIButton = {
+  let b = UIButton(type: .system)
+  b.setTitle("옵션", for: .normal)
+  b.translatesAutoresizingMaskIntoConstraints = false
+  return b
+}()
 
 enum EvaluationMethod: String, CaseIterable {
   case none = "자세평가X"
@@ -82,9 +102,7 @@ enum EvaluationMethod: String, CaseIterable {
 }
 
 private var selectedEvaluationMethod: EvaluationMethod = .none {
-  didSet {
-    resetEvaluationTimer()
-  }
+  didSet { resetEvaluationTimer() }
 }
 private var evaluationTimer: Timer?
 
@@ -98,6 +116,28 @@ private let segmentedControl: UISegmentedControl = {
 override func viewDidLoad() {
   super.viewDidLoad()
   setupOverlayView()
+
+  // PPE 오버레이 (overlayView와 동일 프레임에 올림)
+  ppeOverlayView.backgroundColor = .clear
+  ppeOverlayView.translatesAutoresizingMaskIntoConstraints = false
+  view.addSubview(ppeOverlayView)
+  NSLayoutConstraint.activate([
+    ppeOverlayView.topAnchor.constraint(equalTo: overlayView.topAnchor),
+    ppeOverlayView.leadingAnchor.constraint(equalTo: overlayView.leadingAnchor),
+    ppeOverlayView.trailingAnchor.constraint(equalTo: overlayView.trailingAnchor),
+    ppeOverlayView.bottomAnchor.constraint(equalTo: overlayView.bottomAnchor),
+  ])
+
+  // 옵션 버튼 + 메뉴
+  view.addSubview(optionsButton)
+  NSLayoutConstraint.activate([
+    optionsButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+    optionsButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+    optionsButton.heightAnchor.constraint(equalToConstant: 36)
+  ])
+  rebuildOptionsMenu()
+
+  // 기존 UI
   view.addSubview(segmentedControl)
   segmentedControl.addTarget(self, action: #selector(segmentedControlChanged(_:)), for: .valueChanged)
 
@@ -113,7 +153,7 @@ override func viewDidLoad() {
     evaluationLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor)
   ])
 
-  // Add weight picker below evaluationLabel
+  // 무게 피커
   view.addSubview(weightPickerView)
   weightPickerView.dataSource = self
   weightPickerView.delegate = self
@@ -124,12 +164,12 @@ override func viewDidLoad() {
     weightPickerView.heightAnchor.constraint(equalToConstant: 80)
   ])
 
-  // Combine subscription for selectedWeight changes
+  // Combine: 무게 변경 바인딩
   weightSelection.$selectedWeight
     .sink { [weak self] newWeight in
       switch self?.selectedEvaluationMethod {
       case .rula:
-           RULAEvaluator.selectedWeight = newWeight 
+        RULAEvaluator.selectedWeight = newWeight
       case .reba:
         REBAEvaluator.selectedWeight = newWeight
       case .owas:
@@ -140,6 +180,9 @@ override func viewDidLoad() {
       }
     }
     .store(in: &cancellables)
+
+  // 위임 연결
+  ppeDetector.delegate = self
 
   updateModel()
   configCameraCapture()
@@ -171,24 +214,52 @@ private func setupOverlayView() {
   ])
 }
 
+private func rebuildOptionsMenu() {
+  let postureAction = UIAction(title: "자세 평가", state: isPostureOn ? .on : .off) { [weak self] _ in
+    guard let self = self else { return }
+    self.isPostureOn.toggle()
+    self.resetEvaluationTimer()
+    self.rebuildOptionsMenu()
+  }
+  let helmetAction = UIAction(title: "안전모", state: isHelmetOn ? .on : .off) { [weak self] _ in
+    self?.isHelmetOn.toggle()
+    self?.rebuildOptionsMenu()
+  }
+  let vestAction = UIAction(title: "안전조끼", state: isVestOn ? .on : .off) { [weak self] _ in
+    self?.isVestOn.toggle()
+    self?.rebuildOptionsMenu()
+  }
+  optionsButton.menu = UIMenu(title: "표시/평가 항목", children: [postureAction, helmetAction, vestAction])
+  optionsButton.showsMenuAsPrimaryAction = true
+}
+
 private func resetEvaluationTimer() {
   evaluationTimer?.invalidate()
-  if selectedEvaluationMethod == .none {
+
+  // 자세평가 Off 이거나, 선택이 none 이면 라벨 초기화하고 종료
+  guard isPostureOn, selectedEvaluationMethod != .none else {
     DispatchQueue.main.async {
       self.evaluationLabel.text = "측정 결과 없음"
       self.evaluationLabel.textColor = .label
     }
     return
   }
+
   evaluationTimer = Timer.scheduledTimer(withTimeInterval: selectedEvaluationMethod.interval, repeats: true) { [weak self] _ in
-    guard let self = self, let keypoints = self.overlayView.latestKeypoints else { return }
-    guard self.selectedEvaluationMethod != .none else { return }
-    guard let angles = PoseAngle.measureJointAngles(from: keypoints) else { return }
+    guard let self = self,
+          self.isPostureOn,                                   // 토글 체크
+          self.selectedEvaluationMethod != .none,
+          let keypoints = self.overlayView.latestKeypoints,
+          let angles = PoseAngle.measureJointAngles(from: keypoints) else { return }
+
     print("✅ \(self.selectedEvaluationMethod.rawValue) 측정 완료")
-    
-      switch self.selectedEvaluationMethod {
+
+    switch self.selectedEvaluationMethod {
     case .rula:
-      if let (summary, color, score) = RULAEvaluator.evaluateAndSummarize(from: angles, keypoints: Dictionary(uniqueKeysWithValues: keypoints.map { ($0.bodyPart, $0.coordinate) })) {
+      if let (summary, color, score) = RULAEvaluator.evaluateAndSummarize(
+        from: angles,
+        keypoints: Dictionary(uniqueKeysWithValues: keypoints.map { ($0.bodyPart, $0.coordinate) })
+      ) {
         DispatchQueue.main.async {
           self.evaluationLabel.text = "\(summary) (\(score))"
           self.evaluationLabel.textColor = color
@@ -201,24 +272,27 @@ private func resetEvaluationTimer() {
           self.evaluationLabel.textColor = color
         }
       }
-      case .owas:
-          if let (summary, color, score) = OWASEvaluator.evaluateAndSummarize(from: angles, keypoints: Dictionary(uniqueKeysWithValues: keypoints.map { ($0.bodyPart, $0.coordinate) })) {
-          DispatchQueue.main.async {
-            self.evaluationLabel.text = "\(summary) (\(score))"
-            self.evaluationLabel.textColor = color
-          }
+    case .owas:
+      if let (summary, color, score) = OWASEvaluator.evaluateAndSummarize(
+        from: angles,
+        keypoints: Dictionary(uniqueKeysWithValues: keypoints.map { ($0.bodyPart, $0.coordinate) })
+      ) {
+        DispatchQueue.main.async {
+          self.evaluationLabel.text = "\(summary) (\(score))"
+          self.evaluationLabel.textColor = color
         }
+      }
     case .none:
       break
-          
-      }
+    }
   }
 }
 
 @objc private func segmentedControlChanged(_ sender: UISegmentedControl) {
   selectedEvaluationMethod = EvaluationMethod.allCases[sender.selectedSegmentIndex]
-  // Show weight picker only for RULA, REBA or OWAS
-  weightPickerView.isHidden = !(selectedEvaluationMethod == .rula || selectedEvaluationMethod == .reba || selectedEvaluationMethod == .owas)
+  // RULA/REBA/OWAS일 때만 무게 피커 보이기 (자세평가가 켜져 있을 때 의미 있음)
+  let showWeight = (selectedEvaluationMethod == .rula || selectedEvaluationMethod == .reba || selectedEvaluationMethod == .owas)
+  weightPickerView.isHidden = !showWeight
 }
 
 override func viewWillAppear(_ animated: Bool) {
@@ -241,7 +315,6 @@ private func configCameraCapture() {
   cameraFeedManager.startRunning()
   cameraFeedManager.delegate = self
 }
-
 
 private func updateModel() {
   queue.async {
@@ -283,21 +356,41 @@ extension RiskDetectionViewController : CameraFeedManagerDelegate {
 func cameraFeedManager(
   _ cameraFeedManager: CameraFeedManager, didOutput pixelBuffer: CVPixelBuffer
 ) {
-  self.runModel(pixelBuffer)
+  // PPE 좌표 변환용 원본 이미지 크기 저장
+  latestImageSize = pixelBuffer.size
+
+  // 자세 평가 토글 ON이면 포즈 실행
+  if isPostureOn {
+    self.runModel(pixelBuffer)
+  } else {
+    // 꺼져 있으면 스켈레톤 초기화(현재 프레임만 표시)
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+      let image = UIImage(ciImage: CIImage(cvPixelBuffer: pixelBuffer))
+      self.overlayView.image = image
+    }
+  }
+
+  // PPE 토글(안전모 or 안전조끼) 중 하나라도 ON이면 실행
+  if isHelmetOn || isVestOn {
+    ppeDetector.process(pixelBuffer: pixelBuffer, orientation: .right)
+  } else {
+    DispatchQueue.main.async { [weak self] in
+      self?.ppeOverlayView.clear()
+    }
+  }
 }
 
 private func runModel(_ pixelBuffer: CVPixelBuffer) {
   guard !isRunning else { return }
-
   guard let estimator = poseEstimator else { return }
+
   queue.async {
     self.isRunning = true
     defer { self.isRunning = false }
     do {
-      let (result, times) = try estimator.estimateSinglePose(
-          on: pixelBuffer)
+      let (result, _) = try estimator.estimateSinglePose(on: pixelBuffer)
       DispatchQueue.main.async {
-    
         let image = UIImage(ciImage: CIImage(cvPixelBuffer: pixelBuffer))
 
         if result.score < self.minimumScore {
@@ -314,27 +407,44 @@ private func runModel(_ pixelBuffer: CVPixelBuffer) {
 }
 }
 
+// PPE 결과 수신
+extension RiskDetectionViewController: PPEDetectorDelegate {
+  func detector(_ detector: PPEDetector, didProduce result: PPEDetectionResult?) {
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+
+      // 표시 토글이 모두 꺼져 있으면 오버레이 지움
+      guard self.isHelmetOn || self.isVestOn else {
+        self.ppeOverlayView.clear()
+        return
+      }
+
+      if let r = result {
+        // 현재는 상자 + 3줄을 그대로 그림.
+        // 필요하다면 여기서 self.isHelmetOn / self.isVestOn에 따라
+        // 텍스트 필터링하는 로직을 PPEDetectionOverlayView로 넘겨도 됨.
+        self.ppeOverlayView.render(result: r, imageSize: self.latestImageSize, in: self.overlayView)
+      } else {
+        self.ppeOverlayView.clear()
+      }
+    }
+  }
+}
+
 enum Constants {
-static let defaultThreadCount = 4
-static let defaultDelegate: Delegates = .gpu
-static let defaultModelType: ModelType = .movenetThunder
-static let minimumScore: Float32 = 0.2
+  static let defaultThreadCount = 4
+  static let defaultDelegate: Delegates = .gpu
+  static let defaultModelType: ModelType = .movenetThunder
+  static let minimumScore: Float32 = 0.2
 }
 
 // MARK: - UIPickerViewDataSource & Delegate
 extension RiskDetectionViewController : UIPickerViewDataSource, UIPickerViewDelegate {
-    func numberOfComponents(in pickerView: UIPickerView) -> Int {
-        return 1
-    }
-    
-    func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
-        return weightOptions.count
-    }
-    
+    func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
+    func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int { weightOptions.count }
     func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
-        return weightOptions[row]
+        weightOptions[row]
     }
-    
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
         weightSelection.selectedWeight = row
     }

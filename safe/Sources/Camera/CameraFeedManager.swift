@@ -53,7 +53,7 @@ final class CameraFeedManager: NSObject, AVCaptureVideoDataOutputSampleBufferDel
 
   /// Initialize the capture session.
   private func configureSession() {
-    captureSession.sessionPreset = AVCaptureSession.Preset.photo
+      captureSession.sessionPreset = .high
 
     guard
       let backCamera = AVCaptureDevice.default(
