@@ -8,42 +8,40 @@
 import UIKit
 import AVFoundation
 
-// 컨트롤러가 붙여둔 previewLayer 좌표계로 사람 박스 생성, PPE 착용 유무 스택으로 표시
+final class PPEDetectionOverlayView: UIView {
+    override class var layerClass: AnyClass { CAShapeLayer.self }
+    private var labelLayers: [CATextLayer] = []
 
-public final class PPEDetectionOverlayView: UIView {
-    public weak var previewLayer: AVCaptureVideoPreviewLayer?
-
-    public override init(frame: CGRect) {
-        super.init(frame: frame)
-        isOpaque = false
-        backgroundColor = .clear
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    public func render(results: [PPERenderInfo]) {
-        layer.sublayers?.forEach { $0.removeFromSuperlayer() }
-        for d in results {
-            guard let pl = previewLayer else { continue }
-            let rectTL = PPEGeom.toTopLeftNorm(fromBL: d.normRectBL)
-            let rectInView = pl.layerRectConverted(fromMetadataOutputRect: rectTL)
-            drawRect(rectInView, color: d.allOK ? .systemGreen : .systemRed)
-
-            var items: [(String, UIColor)] = [
-                (d.title, d.allOK ? .systemGreen : .systemRed),
-                (d.helmetOK ? "Helmet" : "No Helmet", d.helmetOK ? .systemGreen : .systemRed),
-                (d.vestOK ? "Vest" : "No Vest", d.vestOK ? .systemGreen : .systemRed)
-            ]
-            drawStackedLabels(above: rectInView, items: items)
-        }
+    func clear() {
+        (layer as? CAShapeLayer)?.path = nil
+        labelLayers.forEach { $0.removeFromSuperlayer() }
+        labelLayers.removeAll()
     }
 
-    private func drawRect(_ rect: CGRect, color: UIColor) {
-        let shape = CAShapeLayer()
+    func render(result: PPEDetectionResult?, with previewLayer: AVCaptureVideoPreviewLayer) {
+        clear()
+        guard let result = result else { return }
+        // Vision → 미디어 → View 좌표 변환
+        let bboxBL = result.personBoxVision
+        let bboxTL = CGRect(x: bboxBL.origin.x,
+                            y: 1.0 - bboxBL.origin.y - bboxBL.size.height,
+                            width: bboxBL.size.width,
+                            height: bboxBL.size.height)
+        let rect = previewLayer.layerRectConverted(fromMetadataOutputRect: bboxTL)
+
+        let shape = (layer as! CAShapeLayer)
         shape.path = UIBezierPath(rect: rect).cgPath
-        shape.strokeColor = color.cgColor
+        shape.strokeColor = (result.allOK ? UIColor.systemGreen : UIColor.systemRed).cgColor
         shape.fillColor = UIColor.clear.cgColor
         shape.lineWidth = 2
-        layer.addSublayer(shape)
+
+        let originText = (result.origin == .detected) ? "탐지" : "추정"
+        let items: [(String, UIColor)] = [
+            ("Person · \(originText)", result.allOK ? .systemGreen : .systemRed),
+            (result.helmetOK ? "Helmet" : "No Helmet", result.helmetOK ? .systemGreen : .systemRed),
+            (result.vestOK   ? "Vest"   : "No Vest",   result.vestOK   ? .systemGreen : .systemRed)
+        ]
+        drawStackedLabels(above: rect, items: items)
     }
 
     private func drawStackedLabels(above rect: CGRect, items: [(String, UIColor)]) {
@@ -63,6 +61,7 @@ public final class PPEDetectionOverlayView: UIView {
             tl.string = text
             tl.frame = CGRect(x: rect.minX, y: y, width: w, height: h)
             layer.addSublayer(tl)
+            labelLayers.append(tl)
         }
     }
 }
