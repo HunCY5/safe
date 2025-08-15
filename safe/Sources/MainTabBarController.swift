@@ -22,7 +22,7 @@ final class MainTabBarController: UITabBarController, UITabBarControllerDelegate
         let SafeVS = UINavigationController(rootViewController: RiskDetectionViewController ())
         SafeVS.tabBarItem = UITabBarItem(title: "안전감시", image: UIImage(systemName: "shield.fill"), tag: 0)
 
-        let LogVC = UINavigationController(rootViewController: LiskLogViewController())
+        let LogVC = UINavigationController(rootViewController: RiskLogViewController())
         LogVC.tabBarItem = UITabBarItem(title: "위험로그", image: UIImage(systemName: "exclamationmark.triangle.fill"), tag: 1)
 
         let CrewManageVC = UINavigationController(rootViewController: CrewManageViewController())
