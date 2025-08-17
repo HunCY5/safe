@@ -36,6 +36,8 @@ final class PPEDetector {
 
     private let visionQueue = DispatchQueue(label: "ppe.vision.queue", qos: .userInitiated)
     private var inflight = false
+    // 출력 끊김 완화: 결과 유지 프레임 수(캐시 보관)
+    private let outputHoldFrames: Int = 4
 
     // 최근 안정 결과 캐시(깜빡임 방지)
     private var lastStableResult: (result: PPEDetectionResult, hold: Int)? = nil
@@ -389,7 +391,7 @@ final class PPEDetector {
         )
 
         // 최신 안정 결과 보관(깜빡임 완화)
-        self.lastStableResult = (result, PPEParams.outputHoldFrames)
+        self.lastStableResult = (result, outputHoldFrames)
 
         delegate?.detector(self, didProduce: result)
     }

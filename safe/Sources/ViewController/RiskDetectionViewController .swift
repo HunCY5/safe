@@ -119,11 +119,13 @@ final class RiskDetectionViewController: UIViewController {
       let helmetAction = UIAction(title: "안전모", state: isHelmetOn ? .on : .off) { [weak self] _ in
         guard let self = self else { return }
         self.isHelmetOn.toggle()
+        if !(self.isHelmetOn || self.isVestOn) { self.ppeOverlayView.clear() }
         self.navigationItem.rightBarButtonItem?.menu = makeMenu()
       }
       let vestAction = UIAction(title: "안전조끼", state: isVestOn ? .on : .off) { [weak self] _ in
         guard let self = self else { return }
         self.isVestOn.toggle()
+        if !(self.isHelmetOn || self.isVestOn) { self.ppeOverlayView.clear() }
         self.navigationItem.rightBarButtonItem?.menu = makeMenu()
       }
       return UIMenu(title: "표시/평가 항목", children: [postureAction, helmetAction, vestAction])
@@ -217,11 +219,13 @@ final class RiskDetectionViewController: UIViewController {
       let helmetAction = UIAction(title: "안전모", state: isHelmetOn ? .on : .off) { [weak self] _ in
         guard let self = self else { return }
         self.isHelmetOn.toggle()
+        if !(self.isHelmetOn || self.isVestOn) { self.ppeOverlayView.clear() }
         self.navigationItem.rightBarButtonItem?.menu = makeMenu()
       }
       let vestAction = UIAction(title: "안전조끼", state: isVestOn ? .on : .off) { [weak self] _ in
         guard let self = self else { return }
         self.isVestOn.toggle()
+        if !(self.isHelmetOn || self.isVestOn) { self.ppeOverlayView.clear() }
         self.navigationItem.rightBarButtonItem?.menu = makeMenu()
       }
       return UIMenu(title: "표시/평가 항목", children: [postureAction, helmetAction, vestAction])
@@ -437,3 +441,4 @@ extension RiskDetectionViewController : UIPickerViewDataSource, UIPickerViewDele
     weightSelection.selectedWeight = row
   }
 }
+
