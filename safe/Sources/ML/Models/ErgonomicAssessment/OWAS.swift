@@ -14,6 +14,9 @@ struct OWASEvaluator {
     static var selectedWeight: Int = 0
     private static var weightSubscriber: AnyCancellable?
     
+    static var screenshotProvider: (() -> UIImage?)?
+    static var saveHandler: ((UIImage, Int, String) -> Void)? 
+    
     static func setWeightBinding(from publisher: Published<Int>.Publisher) {
         weightSubscriber = publisher
             .receive(on: DispatchQueue.main)
@@ -192,6 +195,11 @@ struct OWASEvaluator {
 
         let score = owasEvaluate(from: averaged, keypoints: keypoints)
         let (label, color) = evaluateSummary(from: averaged, keypoints: keypoints)
+        if score >= 3 {
+            if let shot = screenshotProvider?() {
+                saveHandler?(shot, score, "OWAS")
+            }
+        }
         return (label, color, score)
     }
     

@@ -14,6 +14,9 @@ struct RULAEvaluator {
     static var selectedWeight: Int = 0
     private static var weightSubscriber: AnyCancellable?
 
+    static var screenshotProvider: (() -> UIImage?)?
+    static var saveHandler: ((UIImage, Int, String) -> Void)?
+    
     static func setWeightBinding(from publisher: Published<Int>.Publisher) {
         weightSubscriber = publisher
             .receive(on: DispatchQueue.main)
@@ -163,6 +166,11 @@ struct RULAEvaluator {
 
         let score = rulaEvaluate(from: averaged, keypoints: keypoints)
         let (label, color) = evaluateSummary(from: averaged)
+        if score >= 5 {
+                 if let shot = screenshotProvider?() {
+                     saveHandler?(shot, score, "RULA")
+                 }
+             }
         return (label, color, score)
     }
 
