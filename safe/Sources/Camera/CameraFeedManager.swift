@@ -51,15 +51,41 @@ final class CameraFeedManager: NSObject, AVCaptureVideoDataOutputSampleBufferDel
 
   let captureSession = AVCaptureSession()
 
+
   /// Initialize the capture session.
   private func configureSession() {
-    captureSession.sessionPreset = AVCaptureSession.Preset.photo
+      captureSession.sessionPreset = .high
 
     guard
       let backCamera = AVCaptureDevice.default(
         .builtInWideAngleCamera, for: .video, position: .back)
     else {
       return
+    }
+    // Configure camera for stable detection quality
+    do {
+      try backCamera.lockForConfiguration()
+      if backCamera.isFocusModeSupported(.continuousAutoFocus) {
+        backCamera.focusMode = .continuousAutoFocus
+      }
+      if backCamera.isExposureModeSupported(.continuousAutoExposure) {
+        backCamera.exposureMode = .continuousAutoExposure
+      }
+      if backCamera.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
+        backCamera.whiteBalanceMode = .continuousAutoWhiteBalance
+      }
+      // Target ~30 FPS if the device supports setting frame durations
+      let desiredFPS: Double = 30.0
+      let frameDuration = CMTime(value: 1, timescale: CMTimeScale(desiredFPS))
+      if backCamera.activeFormat.videoSupportedFrameRateRanges.contains(where: { range in
+        range.minFrameRate <= desiredFPS && desiredFPS <= range.maxFrameRate
+      }) {
+        backCamera.activeVideoMinFrameDuration = frameDuration
+        backCamera.activeVideoMaxFrameDuration = frameDuration
+      }
+      backCamera.unlockForConfiguration()
+    } catch {
+      // If configuration fails, continue with defaults
     }
     do {
       let input = try AVCaptureDeviceInput(device: backCamera)
@@ -80,8 +106,16 @@ final class CameraFeedManager: NSObject, AVCaptureVideoDataOutputSampleBufferDel
       autoreleaseFrequency: .workItem)
     if captureSession.canAddOutput(videoOutput) {
       captureSession.addOutput(videoOutput)
-      videoOutput.connection(with: .video)?.videoOrientation = .portrait
-      captureSession.startRunning()
+      if let conn = videoOutput.connection(with: .video) {
+        if #available(iOS 17.0, *) {
+          // 90 degrees = portrait (camera held upright)
+          if conn.isVideoRotationAngleSupported(90) {
+            conn.videoRotationAngle = 90
+          }
+        } else {
+          conn.videoOrientation = .portrait
+        }
+      }
     }
     videoOutput.setSampleBufferDelegate(self, queue: dataOutputQueue)
   }

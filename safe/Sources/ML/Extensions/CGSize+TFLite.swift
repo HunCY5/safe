@@ -17,12 +17,7 @@ import Accelerate
 import Foundation
 
 extension CGSize {
-  /// Returns `CGAffineTransform` to resize `self` to fit in destination size, keeping aspect ratio
-  /// of `self`. `self` image is resized to be inscribe to destination size and located in center of
-  /// destination.
-  ///
-  /// - Parameter toFitIn: destination size to be filled.
-  /// - Returns: `CGAffineTransform` to transform `self` image to `dest` image.
+    
   func transformKeepAspect(toFitIn dest: CGSize) -> CGAffineTransform {
     let sourceRatio = self.height / self.width
     let destRatio = dest.height / dest.width
@@ -42,4 +37,24 @@ extension CGSize {
     }
     return CGAffineTransform(a: ratio, b: 0, c: 0, d: ratio, tx: x, ty: y)
   }
-}
+
+    /// 추가: AspectFill (잘리더라도 화면 꽉 채움)
+    func transformKeepAspectFill(toFillIn dest: CGSize) -> CGAffineTransform {
+      let sourceRatio = self.height / self.width
+      let destRatio = dest.height / dest.width
+
+      var ratio: CGFloat
+      var x: CGFloat = 0
+      var y: CGFloat = 0
+      if sourceRatio > destRatio {
+        // 화면이 더 넓을 때 → 폭 기준으로 맞추고, 세로는 잘릴 수 있음
+        ratio = dest.width / self.width
+        y = (dest.height - self.height * ratio) / 2
+      } else {
+        // 화면이 더 좁을 때 → 높이 기준으로 맞추고, 좌우가 잘릴 수 있음
+        ratio = dest.height / self.height
+        x = (dest.width - self.width * ratio) / 2
+      }
+      return CGAffineTransform(a: ratio, b: 0, c: 0, d: ratio, tx: x, ty: y)
+    }
+  }
