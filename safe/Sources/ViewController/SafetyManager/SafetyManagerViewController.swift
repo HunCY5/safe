@@ -216,7 +216,7 @@ final class SafetyManagerViewController: UIViewController {
     }
     
     @objc private func didTapRiskLog() {
-        let vc = LiskLogViewController()
+        let vc = RiskLogViewController()
         navigationController?.pushViewController(vc, animated: true)
     }
     

@@ -19,7 +19,7 @@ final class MainTabBarController: UITabBarController, UITabBarControllerDelegate
     }
 
     private func setupTabs() {
-        let SafeVS = UINavigationController(rootViewController: RiskDetectionViewController ())
+        let SafeVS = UINavigationController(rootViewController: SafetyManagerViewController ())
         SafeVS.tabBarItem = UITabBarItem(title: "안전감시", image: UIImage(systemName: "shield.fill"), tag: 0)
 
         let LogVC = UINavigationController(rootViewController: RiskLogViewController())
