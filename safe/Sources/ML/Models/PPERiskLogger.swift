@@ -25,7 +25,13 @@ final class PPERiskLogger {
 
     func handle(result r: PPEDetectionResult?,
                 baseFrame: UIImage?,
-                makePPEScreenshot: () -> UIImage?) {
+                makePPEScreenshot: () -> UIImage?,
+                detectHelmet: Bool,
+                detectVest: Bool) {
+        // 선택 해제된 PPE는 미착용 로그 생성 X
+        if !detectHelmet { resetHelmet() }
+        if !detectVest { resetVest() }
+
         guard let r = r else {
             resetHelmet(); resetVest()
             return
@@ -33,25 +39,31 @@ final class PPERiskLogger {
         let now = Date()
 
         // 헬멧
-        if !r.helmetOK {
-            if nonHelmetStart == nil { nonHelmetStart = now }
-        } else {
-            resetHelmet()
+        if detectHelmet {
+            if !r.helmetOK {
+                if nonHelmetStart == nil { nonHelmetStart = now }
+            } else {
+                resetHelmet()
+            }
         }
         // 조끼
-        if !r.vestOK {
-            if nonVestStart == nil { nonVestStart = now }
-        } else {
-            resetVest()
+        if detectVest {
+            if !r.vestOK {
+                if nonVestStart == nil { nonVestStart = now }
+            } else {
+                resetVest()
+            }
         }
 
         var types: [String] = []
         // 시간 지정
-        if let s = nonHelmetStart,
+        if detectHelmet,
+           let s = nonHelmetStart,
            now.timeIntervalSince(s) >= thresholdSeconds, !didLogHelmet {
             types.append("안전모 미착용"); didLogHelmet = true
         }
-        if let s = nonVestStart, now.timeIntervalSince(s) >= thresholdSeconds, !didLogVest {
+        if detectVest,
+           let s = nonVestStart, now.timeIntervalSince(s) >= thresholdSeconds, !didLogVest {
             types.append("안전조끼 미착용"); didLogVest = true
         }
         guard !types.isEmpty else { return }

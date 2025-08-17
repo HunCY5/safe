@@ -400,35 +400,39 @@ extension RiskDetectionViewController: PPEDetectorDelegate {
                                      showVestLabel: self.isVestOn)
 
           // Risk 로깅
-          self.riskLogger.handle(result: r,
-                                 baseFrame: self.lastBaseFrame,
-                                 makePPEScreenshot: { [weak self] in
-            guard let self = self, let base = self.lastBaseFrame else { return nil }
+          self.riskLogger.handle(
+            result: r,
+            baseFrame: self.lastBaseFrame,
+            makePPEScreenshot: { [weak self] in
+              guard let self = self, let base = self.lastBaseFrame else { return nil }
 
-            let targetSize = self.overlayView.bounds.size
-            guard targetSize.width > 0, targetSize.height > 0 else { return nil }
+              let targetSize = self.overlayView.bounds.size
+              guard targetSize.width > 0, targetSize.height > 0 else { return nil }
 
-            // 오프스크린 오버레이(YOLO 라벨/박스만)
-            let tempOverlay = PPEDetectionOverlayView(frame: CGRect(origin: .zero, size: targetSize))
-            let tempImageView = UIImageView(frame: CGRect(origin: .zero, size: targetSize))
-            tempOverlay.isOpaque = false
+              // 오프스크린 오버레이(YOLO 라벨/박스만)
+              let tempOverlay = PPEDetectionOverlayView(frame: CGRect(origin: .zero, size: targetSize))
+              let tempImageView = UIImageView(frame: CGRect(origin: .zero, size: targetSize))
+              tempOverlay.isOpaque = false
 
-            // 이미지 좌표계 기준 렌더(스켈레톤은 추가 X)
-            tempOverlay.render(result: r,
-                               imageSize: base.size,
-                               in: tempImageView,
-                               showHelmetLabel: self.isHelmetOn,
-                               showVestLabel: self.isVestOn)
+              // 이미지 좌표계 기준 렌더(스켈레톤은 추가 X)
+              tempOverlay.render(result: r,
+                                 imageSize: base.size,
+                                 in: tempImageView,
+                                 showHelmetLabel: self.isHelmetOn,
+                                 showVestLabel: self.isVestOn)
 
-            // 최종 합성: 배경(원본 프레임, aspectFill) + YOLO 오버레이
-            let renderer = UIGraphicsImageRenderer(size: targetSize)
-            let shot = renderer.image { ctx in
-              let rect = Self.aspectFillRect(for: base.size, in: targetSize)
-              base.draw(in: rect)
-              tempOverlay.layer.render(in: ctx.cgContext)
-            }
-            return shot
-          })
+              // 최종 합성: 배경(원본 프레임, aspectFill) + YOLO 오버레이
+              let renderer = UIGraphicsImageRenderer(size: targetSize)
+              let shot = renderer.image { ctx in
+                let rect = Self.aspectFillRect(for: base.size, in: targetSize)
+                base.draw(in: rect)
+                tempOverlay.layer.render(in: ctx.cgContext)
+              }
+              return shot
+            },
+            detectHelmet: self.isHelmetOn,
+            detectVest: self.isVestOn
+          )
 
         } else {
           self.ppeOverlayView.clear()
