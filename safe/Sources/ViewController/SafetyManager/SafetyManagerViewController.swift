@@ -10,6 +10,9 @@ import FirebaseFirestore
 
 final class SafetyManagerViewController: UIViewController {
     
+    // 현재 현장(섹터)명
+    static var currentSectorName: String = ""
+    
     private enum UIConst {
         /// 카메라 아이콘 배지 크기
         static let cameraBadgeSize: CGFloat = 84
@@ -176,6 +179,9 @@ final class SafetyManagerViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
+        
+        // 섹터명 공유
+        SafetyManagerViewController.currentSectorName = siteSubtitleLabel.text ?? ""
         
         topBar.translatesAutoresizingMaskIntoConstraints = false
         topBar.backgroundColor = .secondarySystemBackground // 색상
