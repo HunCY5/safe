@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import FirebaseFirestore
 
 final class SafetyManagerViewController: UIViewController {
     
@@ -32,6 +33,10 @@ final class SafetyManagerViewController: UIViewController {
         /// 카드 내부 아이콘(좌측)들의 정렬 기준을 맞추기 위한 슬롯(고정 폭 컨테이너) 너비
         static let contentIconSlotWidth: CGFloat = 28
     }
+    
+    private let db = Firestore.firestore()
+    
+    private var todayCountListener: ListenerRegistration?
     
     // MARK: - UI
     
@@ -145,7 +150,7 @@ final class SafetyManagerViewController: UIViewController {
     }()
     private let riskSubtitleLabel: UILabel = {
         let lb = UILabel()
-        lb.text = "3개의 위험 상황이 감지되었습니다"
+        lb.text = "오늘 발생한 위험로그는 총 0개입니다"
         lb.font = .systemFont(ofSize: 14, weight: .regular)
         lb.textColor = .secondaryLabel
         lb.numberOfLines = 0
@@ -182,7 +187,6 @@ final class SafetyManagerViewController: UIViewController {
         topTextStack.spacing = 2
         topTextStack.translatesAutoresizingMaskIntoConstraints = false
 
-
         let topRow = UIStackView(arrangedSubviews: [topLogoView, topTextStack, UIView()])
         topRow.axis = .horizontal
         topRow.alignment = .center
@@ -206,6 +210,57 @@ final class SafetyManagerViewController: UIViewController {
         ])
         
         setupLayout()
+        setRiskCount(0)
+        // Firestore에서 오늘 발생한 위험로그 개수 불러와 카드 문구 갱신
+        fetchTodayRiskCount()
+    }
+
+    // 오늘 위험로그 개수 라벨(부분 강조) 업데이트
+    private func setRiskCount(_ count: Int) {
+        let base = "오늘 발생한 위험로그는 총 \(count)개입니다"
+        let attr = NSMutableAttributedString(string: base)
+        let target = "\(count)개"
+        if let range = base.range(of: target) {
+            let nsRange = NSRange(range, in: base)
+            attr.addAttribute(.foregroundColor, value: UIColor.systemRed, range: nsRange)
+            attr.addAttribute(.font, value: UIFont.systemFont(ofSize: 14, weight: .semibold), range: nsRange)
+        }
+        riskSubtitleLabel.attributedText = attr
+    }
+    
+    // MARK: - Firestore: 오늘 로그 개수 집계
+    private func fetchTodayRiskCount() {
+        todayCountListener?.remove()
+        
+        let tz = TimeZone(identifier: "Asia/Seoul") ?? .current
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = tz
+        
+        let now = Date()
+        let startOfDay = calendar.startOfDay(for: now)
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return }
+        
+        let startTS = Timestamp(date: startOfDay)
+        let endTS = Timestamp(date: endOfDay)
+        
+        let query = db.collection("safetyLog")
+            .whereField("timeStamp", isGreaterThanOrEqualTo: startTS)
+            .whereField("timeStamp", isLessThan: endTS)
+        
+        todayCountListener = query.addSnapshotListener(includeMetadataChanges: true) { [weak self] snapshot, error in
+            guard let self = self else { return }
+            if let error = error {
+                print("[SafetyManager] fetchTodayRiskCount listener error: \(error)")
+                DispatchQueue.main.async {
+                    self.setRiskCount(0)
+                }
+                return
+            }
+            let count = snapshot?.documents.count ?? 0
+            DispatchQueue.main.async {
+                self.setRiskCount(count)
+            }
+        }
     }
     
     // MARK: - action
@@ -216,8 +271,10 @@ final class SafetyManagerViewController: UIViewController {
     }
     
     @objc private func didTapRiskLog() {
-        let vc = RiskLogViewController()
-        navigationController?.pushViewController(vc, animated: true)
+        if let tab = self.tabBarController {
+            tab.selectedIndex = 1 // "위험로그" 탭
+        }
+        NotificationCenter.default.post(name: .riskLogSetToday, object: nil)
     }
     
     // MARK: - 레이아웃
@@ -337,7 +394,6 @@ final class SafetyManagerViewController: UIViewController {
         contentStack.addArrangedSubview(aiGroupCard)
 
         // AI 탐지기능 헤더 아이콘/배지 옵션
-        
         aiIconBadge.translatesAutoresizingMaskIntoConstraints = false
         aiIconBadge.backgroundColor = UIColor(red: 0.88, green: 0.95, blue: 1.0, alpha: 1.0)
         aiIconBadge.layer.cornerRadius = UIConst.headerBadgeCorner
@@ -408,8 +464,6 @@ final class SafetyManagerViewController: UIViewController {
         let ppeB2 = bulletLabel("안전조끼 착용 상태 모니터링")
         let ppeB3 = bulletLabel("미착용 시 즉시 알림 발송")
 
-        // [정렬 규칙] PNG(Assets)와 SF Symbols의 내부 여백 차이를 제거하기 위해 고정 폭 슬롯을 사용
-        // 좌측 아이콘을 고정 폭 슬롯에 넣어 PNG/SF 차이와 무관하게 동일 시작선을 맞춤
         let ppeIconSlot = UIView()
         ppeIconSlot.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -440,8 +494,8 @@ final class SafetyManagerViewController: UIViewController {
             ppeStack.leadingAnchor.constraint(equalTo: ppeMini.leadingAnchor, constant: 16),
             ppeStack.trailingAnchor.constraint(equalTo: ppeMini.trailingAnchor, constant: -16),
             ppeStack.bottomAnchor.constraint(equalTo: ppeMini.bottomAnchor, constant: -16),
-            ppeIcon.widthAnchor.constraint(equalToConstant: UIConst.ppeIconSize),    // PPE 아이콘 너비
-            ppeIcon.heightAnchor.constraint(equalToConstant: UIConst.ppeIconSize)   // PPE 아이콘 높이
+            ppeIcon.widthAnchor.constraint(equalToConstant: UIConst.ppeIconSize),
+            ppeIcon.heightAnchor.constraint(equalToConstant: UIConst.ppeIconSize)
         ])
 
         // 자세 평가 카드
@@ -503,8 +557,8 @@ final class SafetyManagerViewController: UIViewController {
             postureStack.leadingAnchor.constraint(equalTo: postureMini.leadingAnchor, constant: 16),
             postureStack.trailingAnchor.constraint(equalTo: postureMini.trailingAnchor, constant: -16),
             postureStack.bottomAnchor.constraint(equalTo: postureMini.bottomAnchor, constant: -16),
-            postureIcon.widthAnchor.constraint(equalToConstant: UIConst.postureIconSize), // ← 자세 아이콘 크기(너비)
-            postureIcon.heightAnchor.constraint(equalToConstant: UIConst.postureIconSize)  // ← 자세 아이콘 크기(높이)
+            postureIcon.widthAnchor.constraint(equalToConstant: UIConst.postureIconSize),
+            postureIcon.heightAnchor.constraint(equalToConstant: UIConst.postureIconSize)
         ])
     }
     
@@ -540,6 +594,16 @@ final class SafetyManagerViewController: UIViewController {
         super.viewDidLayoutSubviews()
         let bottomInset = view.safeAreaInsets.bottom + 8
         scrollView.contentInset.bottom = bottomInset
-        scrollView.scrollIndicatorInsets.bottom = bottomInset
+        if #available(iOS 13.0, *) {
+            scrollView.verticalScrollIndicatorInsets = UIEdgeInsets(top: 0, left: 0, bottom: bottomInset, right: 0)
+        } else {
+            var insets = scrollView.scrollIndicatorInsets
+            insets.bottom = bottomInset
+            scrollView.scrollIndicatorInsets = insets
+        }
+    }
+    
+    deinit {
+        todayCountListener?.remove()
     }
 }
