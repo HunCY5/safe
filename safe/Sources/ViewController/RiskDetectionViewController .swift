@@ -58,6 +58,10 @@ final class RiskDetectionViewController: UIViewController {
   private let ppeOverlayView = PPEDetectionOverlayView()
   private var latestImageSize: CGSize = .zero
 
+  // 위험 로깅
+  private let riskLogger = PPERiskLogger()
+  private var lastBaseFrame: UIImage?
+
   // 모델 설정
   private var modelType: ModelType = Constants.defaultModelType
   private var threadCount: Int = Constants.defaultThreadCount
@@ -76,7 +80,6 @@ final class RiskDetectionViewController: UIViewController {
   private var isPostureOn = true
   private var isHelmetOn = true
   private var isVestOn = true
-
 
   enum EvaluationMethod: String, CaseIterable {
     case none = "자세평가X"
@@ -188,6 +191,10 @@ final class RiskDetectionViewController: UIViewController {
     // 위임 연결
     ppeDetector.delegate = self
 
+    // 위험 로거 설정(섹터/미착용 지속시간)
+    riskLogger.sectorProvider = { SafetyManagerViewController.currentSectorName }
+    riskLogger.thresholdSeconds = 5.0 // 5초
+
     updateModel()
     configCameraCapture()
     resetEvaluationTimer()
@@ -206,31 +213,6 @@ final class RiskDetectionViewController: UIViewController {
       overlayView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
       overlayView.heightAnchor.constraint(equalToConstant: 525),
     ])
-  }
-
-  private func rebuildOptionsMenu() {
-    func makeMenu() -> UIMenu {
-      let postureAction = UIAction(title: "자세 평가", state: isPostureOn ? .on : .off) { [weak self] _ in
-        guard let self = self else { return }
-        self.isPostureOn.toggle()
-        self.resetEvaluationTimer()
-        self.navigationItem.rightBarButtonItem?.menu = makeMenu()
-      }
-      let helmetAction = UIAction(title: "안전모", state: isHelmetOn ? .on : .off) { [weak self] _ in
-        guard let self = self else { return }
-        self.isHelmetOn.toggle()
-        if !(self.isHelmetOn || self.isVestOn) { self.ppeOverlayView.clear() }
-        self.navigationItem.rightBarButtonItem?.menu = makeMenu()
-      }
-      let vestAction = UIAction(title: "안전조끼", state: isVestOn ? .on : .off) { [weak self] _ in
-        guard let self = self else { return }
-        self.isVestOn.toggle()
-        if !(self.isHelmetOn || self.isVestOn) { self.ppeOverlayView.clear() }
-        self.navigationItem.rightBarButtonItem?.menu = makeMenu()
-      }
-      return UIMenu(title: "표시/평가 항목", children: [postureAction, helmetAction, vestAction])
-    }
-    self.navigationItem.rightBarButtonItem?.menu = makeMenu()
   }
 
   private func resetEvaluationTimer() {
@@ -353,6 +335,9 @@ extension RiskDetectionViewController : CameraFeedManagerDelegate {
     // PPE 좌표 변환용 원본 이미지 크기 저장
     latestImageSize = pixelBuffer.size
 
+    // 스크린샷(배경)용 원본 프레임 보관 (스켈레톤 제외용)
+    lastBaseFrame = UIImage(ciImage: CIImage(cvPixelBuffer: pixelBuffer))
+
     // 자세 평가 토글 ON이면 포즈 실행
     if isPostureOn {
       self.runModel(pixelBuffer)
@@ -404,22 +389,71 @@ extension RiskDetectionViewController: PPEDetectorDelegate {
   func detector(_ detector: PPEDetector, didProduce result: PPEDetectionResult?) {
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
-      guard self.isHelmetOn || self.isVestOn else {
-        self.ppeOverlayView.clear()
-        return
-      }
 
-      if let r = result {
-        // 현재 프로젝트의 PPEDetectionOverlayView 최신 시그니처(이미지 크기 + overlayView 좌표계 매핑) 사용
-        self.ppeOverlayView.render(result: r,
-                                   imageSize: self.latestImageSize,
-                                   in: self.overlayView,
-                                   showHelmetLabel: self.isHelmetOn,
-                                   showVestLabel: self.isVestOn)
+      // 오버레이 갱신
+      if self.isHelmetOn || self.isVestOn {
+        if let r = result {
+          self.ppeOverlayView.render(result: r,
+                                     imageSize: self.latestImageSize,
+                                     in: self.overlayView,
+                                     showHelmetLabel: self.isHelmetOn,
+                                     showVestLabel: self.isVestOn)
+
+          // Risk 로깅
+          self.riskLogger.handle(
+            result: r,
+            baseFrame: self.lastBaseFrame,
+            makePPEScreenshot: { [weak self] in
+              guard let self = self, let base = self.lastBaseFrame else { return nil }
+
+              let targetSize = self.overlayView.bounds.size
+              guard targetSize.width > 0, targetSize.height > 0 else { return nil }
+
+              // 오프스크린 오버레이(YOLO 라벨/박스만)
+              let tempOverlay = PPEDetectionOverlayView(frame: CGRect(origin: .zero, size: targetSize))
+              let tempImageView = UIImageView(frame: CGRect(origin: .zero, size: targetSize))
+              tempOverlay.isOpaque = false
+
+              // 이미지 좌표계 기준 렌더(스켈레톤은 추가 X)
+              tempOverlay.render(result: r,
+                                 imageSize: base.size,
+                                 in: tempImageView,
+                                 showHelmetLabel: self.isHelmetOn,
+                                 showVestLabel: self.isVestOn)
+
+              // 최종 합성: 배경(원본 프레임, aspectFill) + YOLO 오버레이
+              let renderer = UIGraphicsImageRenderer(size: targetSize)
+              let shot = renderer.image { ctx in
+                let rect = Self.aspectFillRect(for: base.size, in: targetSize)
+                base.draw(in: rect)
+                tempOverlay.layer.render(in: ctx.cgContext)
+              }
+              return shot
+            },
+            detectHelmet: self.isHelmetOn,
+            detectVest: self.isVestOn
+          )
+
+        } else {
+          self.ppeOverlayView.clear()
+        }
       } else {
         self.ppeOverlayView.clear()
       }
     }
+  }
+
+  // 배경 이미지를 overlayView 크기에 맞게 채우는 rect
+  private static func aspectFillRect(for imageSize: CGSize, in boundsSize: CGSize) -> CGRect {
+    guard imageSize.width > 0, imageSize.height > 0, boundsSize.width > 0, boundsSize.height > 0 else {
+      return CGRect(origin: .zero, size: boundsSize)
+    }
+    let scale = max(boundsSize.width / imageSize.width, boundsSize.height / imageSize.height)
+    let w = imageSize.width * scale
+    let h = imageSize.height * scale
+    let x = (boundsSize.width - w) / 2
+    let y = (boundsSize.height - h) / 2
+    return CGRect(x: x, y: y, width: w, height: h)
   }
 }
 
@@ -441,4 +475,5 @@ extension RiskDetectionViewController : UIPickerViewDataSource, UIPickerViewDele
     weightSelection.selectedWeight = row
   }
 }
+
 

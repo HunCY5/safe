@@ -9,6 +9,11 @@ import UIKit
 import FirebaseFirestore
 import Kingfisher
 
+// 위험로그로 이동 버튼으로 이동 시, 날짜를 오늘로 설정
+extension Notification.Name {
+    static let riskLogSetToday = Notification.Name("riskLogSetToday")
+}
+
 final class RiskLogViewController: UIViewController {
     private let riskLogView = RiskLogView()
     private var selectedDate = Date()
@@ -42,6 +47,7 @@ final class RiskLogViewController: UIViewController {
         navigationItem.largeTitleDisplayMode = .always
         title = "위험 로그"
         
+        // 오늘 날짜로 초기 표시
         riskLogView.setDate(selectedDate)
         riskLogView.setDateButtonTarget(self, action: #selector(presentDatePicker))
         riskLogView.onDateChanged = { [weak self] date in
@@ -65,6 +71,26 @@ final class RiskLogViewController: UIViewController {
             self.presentImageModal(url: url)
         }
         
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(setTodayAndReload),
+                                               name: .riskLogSetToday,
+                                               object: nil)
+        
+        listenSafetyLog()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self, name: .riskLogSetToday, object: nil)
+    }
+    
+    @objc private func setTodayAndReload() {
+        // KST 기준 오늘로 설정
+        let tz = TimeZone(identifier: "Asia/Seoul") ?? .current
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = tz
+        let today = Date()
+        selectedDate = today
+        riskLogView.setDate(today)
         listenSafetyLog()
     }
     
@@ -143,7 +169,6 @@ final class RiskLogViewController: UIViewController {
             self.riskLogView.updatePostureCount(postureCount)
             let sorted = logItems.sorted { $0.timeStamp > $1.timeStamp }
             self.riskLogView.updateLogItems(sorted)
-            
         }
     }
     
