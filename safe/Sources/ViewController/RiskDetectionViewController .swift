@@ -39,6 +39,9 @@ final class WeightSelection: ObservableObject {
 
 final class RiskDetectionViewController: UIViewController {
 
+  // Lifecycle state flag
+  private var isActive: Bool = false
+
   private let weightSelection = WeightSelection()
   private var cancellables = Set<AnyCancellable>()
 
@@ -90,7 +93,7 @@ final class RiskDetectionViewController: UIViewController {
     var interval: TimeInterval {
       switch self {
       case .none: return 0
-      case .rula, .reba, .owas: return 1.0
+      case .rula, .reba, .owas: return 2.0
       }
     }
   }
@@ -181,19 +184,47 @@ final class RiskDetectionViewController: UIViewController {
         case .reba:
           REBAEvaluator.selectedWeight = newWeight
         case .owas:
-          // OWASEvaluator.selectedWeight = newWeight (원하면 연결)
+          OWASEvaluator.selectedWeight = newWeight
           break
         default: break
         }
       }
       .store(in: &cancellables)
 
-    // 위임 연결
     ppeDetector.delegate = self
 
-    // 위험 로거 설정(섹터/미착용 지속시간)
     riskLogger.sectorProvider = { SafetyManagerViewController.currentSectorName }
-    riskLogger.thresholdSeconds = 5.0 // 5초
+    riskLogger.thresholdSeconds = 10.0 
+
+    OWASEvaluator.screenshotProvider = { [weak self] in
+      guard let self = self else { return nil }
+      return self.makeSkeletonOnlyScreenshot()
+    }
+    OWASEvaluator.saveHandler = { [weak self] image, score, poseType in
+      guard let _ = self else { return }
+      PostureRiskLogger.shared.sectorProvider = { SafetyManagerViewController.currentSectorName }
+      PostureRiskLogger.shared.minInterval = 5
+      PostureRiskLogger.shared.upload(image: image, poseType: poseType, score: score, completion: nil)
+    }
+    RULAEvaluator.screenshotProvider = { [weak self] in
+        self?.makeSkeletonOnlyScreenshot()
+    }
+    RULAEvaluator.saveHandler = { [weak self] image, score, _ in
+        guard let self = self else { return }
+        PostureRiskLogger.shared.sectorProvider = { SafetyManagerViewController.currentSectorName }
+        PostureRiskLogger.shared.minInterval = 5
+        PostureRiskLogger.shared.upload(image: image, poseType: "RULA", score: score, completion: nil)
+    }
+
+    REBAEvaluator.screenshotProvider = { [weak self] in
+        self?.makeSkeletonOnlyScreenshot()
+    }
+    REBAEvaluator.saveHandler = { [weak self] image, score, _ in
+        guard let self = self else { return }
+        PostureRiskLogger.shared.sectorProvider = { SafetyManagerViewController.currentSectorName }
+        PostureRiskLogger.shared.minInterval = 5
+        PostureRiskLogger.shared.upload(image: image, poseType: "REBA", score: score, completion: nil)
+      }
 
     updateModel()
     configCameraCapture()
@@ -217,7 +248,7 @@ final class RiskDetectionViewController: UIViewController {
 
   private func resetEvaluationTimer() {
     evaluationTimer?.invalidate()
-      // 자세평가 Off 이거나, 선택이 none 이면 라벨 초기화하고 종료
+    // 자세평가 Off 이거나, 선택이 none 이면 라벨 초기화하고 종료
     guard isPostureOn, selectedEvaluationMethod != .none else {
       DispatchQueue.main.async {
         self.evaluationLabel.text = "측정 결과 없음"
@@ -225,6 +256,7 @@ final class RiskDetectionViewController: UIViewController {
       }
       return
     }
+    guard isActive else { return }
 
     evaluationTimer = Timer.scheduledTimer(withTimeInterval: selectedEvaluationMethod.interval, repeats: true) { [weak self] _ in
       guard let self = self,
@@ -233,7 +265,7 @@ final class RiskDetectionViewController: UIViewController {
             let keypoints = self.overlayView.latestKeypoints,
             let angles = PoseAngle.measureJointAngles(from: keypoints) else { return }
         
-        print("✅ \(self.selectedEvaluationMethod.rawValue) 측정 완료")
+      print("✅ \(self.selectedEvaluationMethod.rawValue) 측정 완료")
 
       switch self.selectedEvaluationMethod {
       case .rula:
@@ -268,6 +300,76 @@ final class RiskDetectionViewController: UIViewController {
     }
   }
 
+    private func makeSkeletonOnlyScreenshot() -> UIImage? {
+        guard isActive else { return nil }
+        guard let base = lastBaseFrame else { return nil }
+        guard let keypoints = overlayView.latestKeypoints else { return nil }
+
+        let targetSize = overlayView.bounds.size
+        guard targetSize.width > 0, targetSize.height > 0 else { return nil }
+
+        let rect = Self.aspectFillRect(for: base.size, in: targetSize)
+        let scale = max(rect.width / base.size.width, rect.height / base.size.height)
+
+        func mapPoint(_ p: CGPoint) -> CGPoint {
+            let px: CGFloat
+            let py: CGFloat
+            if (0...1).contains(p.x) && (0...1).contains(p.y) {
+                px = p.x * base.size.width
+                py = p.y * base.size.height
+            } else {
+                px = p.x
+                py = p.y
+            }
+            let x = rect.minX + px * scale
+            let y = rect.minY + py * scale
+            return CGPoint(x: x, y: y)
+        }
+
+        let pairs: [(BodyPart, BodyPart)] = [
+            (.leftWrist, .leftElbow), (.leftElbow, .leftShoulder),
+            (.leftShoulder, .rightShoulder),
+            (.rightShoulder, .rightElbow), (.rightElbow, .rightWrist),
+            (.leftShoulder, .leftHip), (.leftHip, .rightHip), (.rightHip, .rightShoulder),
+            (.leftHip, .leftKnee), (.leftKnee, .leftAnkle),
+            (.rightHip, .rightKnee), (.rightKnee, .rightAnkle),
+        ]
+
+        let dict = Dictionary(uniqueKeysWithValues: keypoints.map { ($0.bodyPart, $0.coordinate) })
+
+        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let shot = renderer.image { ctx in
+            base.draw(in: rect)
+
+            let cg = ctx.cgContext
+            cg.setBlendMode(.normal)
+            cg.setLineWidth(3)
+            cg.setLineCap(.round)
+            cg.setLineJoin(.round)
+            cg.setStrokeColor(UIColor.orange.cgColor)
+            cg.setFillColor(UIColor.orange.cgColor)
+
+            cg.beginPath()
+            for (a, b) in pairs {
+                if let p1 = dict[a], let p2 = dict[b] {
+                    let m1 = mapPoint(p1)
+                    let m2 = mapPoint(p2)
+                    cg.move(to: m1)
+                    cg.addLine(to: m2)
+                }
+            }
+            cg.strokePath()
+
+            let r: CGFloat = 3.0
+            for kp in keypoints {
+                let pt = mapPoint(kp.coordinate)
+                let dot = CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2)
+                cg.fillEllipse(in: dot)
+            }
+        }
+        return shot
+    }
+    
   @objc private func segmentedControlChanged(_ sender: UISegmentedControl) {
     selectedEvaluationMethod = EvaluationMethod.allCases[sender.selectedSegmentIndex]
       // RULA/REBA/OWAS일 때만 무게 피커 보이기 (자세평가가 켜져 있을 때 의미 있음)
@@ -277,6 +379,7 @@ final class RiskDetectionViewController: UIViewController {
 
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
+    isActive = true
     cameraFeedManager?.startRunning()
     self.navigationController?.setNavigationBarHidden(false, animated: animated)
     self.tabBarController?.tabBar.isHidden = true
@@ -284,9 +387,24 @@ final class RiskDetectionViewController: UIViewController {
 
   override func viewWillDisappear(_ animated: Bool) {
     super.viewWillDisappear(animated)
+    isActive = false
+    evaluationTimer?.invalidate()
+    evaluationTimer = nil
     cameraFeedManager?.stopRunning()
+    cameraFeedManager?.delegate = nil
+    ppeDetector.delegate = nil
+    overlayView.image = nil
+    ppeOverlayView.clear()
     self.tabBarController?.tabBar.isHidden = false
     self.navigationController?.setNavigationBarHidden(false, animated: animated)
+  }
+
+  deinit {
+    evaluationTimer?.invalidate()
+    cameraFeedManager?.stopRunning()
+    cameraFeedManager?.delegate = nil
+    ppeDetector.delegate = nil
+    cancellables.removeAll()
   }
 
   override func viewDidLayoutSubviews() {
@@ -332,6 +450,7 @@ final class RiskDetectionViewController: UIViewController {
 // MARK: - CameraFeedManagerDelegate Methods
 extension RiskDetectionViewController : CameraFeedManagerDelegate {
   func cameraFeedManager(_ cameraFeedManager: CameraFeedManager, didOutput pixelBuffer: CVPixelBuffer) {
+    guard isActive else { return }
     // PPE 좌표 변환용 원본 이미지 크기 저장
     latestImageSize = pixelBuffer.size
 
@@ -360,6 +479,7 @@ extension RiskDetectionViewController : CameraFeedManagerDelegate {
   }
 
   private func runModel(_ pixelBuffer: CVPixelBuffer) {
+    guard isActive else { return }
     guard !isRunning else { return }
     guard let estimator = poseEstimator else { return }
 
@@ -388,7 +508,7 @@ extension RiskDetectionViewController : CameraFeedManagerDelegate {
 extension RiskDetectionViewController: PPEDetectorDelegate {
   func detector(_ detector: PPEDetector, didProduce result: PPEDetectionResult?) {
     DispatchQueue.main.async { [weak self] in
-      guard let self = self else { return }
+      guard let self = self, self.isActive else { return }
 
       // 오버레이 갱신
       if self.isHelmetOn || self.isVestOn {

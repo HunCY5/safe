@@ -14,6 +14,9 @@ struct REBAEvaluator {
     static var selectedWeight: Int = 0
     private static var weightSubscriber: AnyCancellable?
 
+    static var screenshotProvider: (() -> UIImage?)?
+    static var saveHandler: ((UIImage, Int, String) -> Void)? 
+    
     static func setWeightBinding(from publisher: Published<Int>.Publisher) {
         weightSubscriber = publisher
             .receive(on: DispatchQueue.main)
@@ -210,6 +213,11 @@ struct REBAEvaluator {
             score += 1
         }
         let (label, color) = evaluateSummary(from: averaged)
+        if score >= 8 {
+                 if let shot = screenshotProvider?() {
+                     saveHandler?(shot, score, "REBA")
+                 }
+             }
         return (label, color, score)
     }
     
