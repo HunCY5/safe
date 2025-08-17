@@ -37,6 +37,10 @@ final class PPEDetector {
     private let visionQueue = DispatchQueue(label: "ppe.vision.queue", qos: .userInitiated)
     private var inflight = false
 
+    // Which PPE items are required to be evaluated (toggled via VC)
+    var requireHelmet: Bool = true
+    var requireVest: Bool = true
+
     init(modelName: String = "DetectionYolov11") { // .mlpackage/.mlmodelc base name
         self.modelName = modelName
         loadModel()
@@ -314,10 +318,10 @@ final class PPEDetector {
         }
         func isOnTorso(child: CGRect, of person: CGRect) -> Bool {
             let torso = CGRect(
-                x: person.minX + person.width * 0.05,
-                y: person.minY + person.height * 0.30,
-                width: person.width * 0.90,
-                height: person.height * 0.50
+                x: person.minX + person.width * 0.04,
+                y: person.minY + person.height * 0.25,
+                width:  person.width * 0.92,
+                height: person.height * 0.60
             )
             let c = CGPoint(x: child.midX, y: child.midY)
             return torso.contains(c)
@@ -330,13 +334,20 @@ final class PPEDetector {
         let vMax  = maxConf(in: torsoVests,   parent: pBox)
         let nvMax = maxConf(in: torsoNoVests, parent: pBox)
 
+        // Decide helmet/vest with a bias to show violations when signals are present
         var helmetOKDecided: Bool?
-        if hMax >= PPEParams.tHelmet && (hMax - nhMax) >= PPEParams.deltaMargin { helmetOKDecided = true }
-        else if nhMax >= PPEParams.tNoHelmet && (nhMax - hMax) >= PPEParams.deltaMargin { helmetOKDecided = false }
+        if nhMax >= PPEParams.tNoHelmet {
+            helmetOKDecided = false  // strong NO-helmet wins immediately
+        } else if hMax >= PPEParams.tHelmet && (hMax - nhMax) >= PPEParams.deltaMargin {
+            helmetOKDecided = true
+        }
 
         var vestOKDecided: Bool?
-        if vMax >= PPEParams.tVest && (vMax - nvMax) >= PPEParams.deltaMargin { vestOKDecided = true }
-        else if nvMax >= PPEParams.tNoVest && (nvMax - vMax) >= PPEParams.extraNoVestMargin { vestOKDecided = false }
+        if nvMax >= PPEParams.tNoVest {
+            vestOKDecided = false    // strong NO-vest wins immediately
+        } else if vMax >= PPEParams.tVest && (vMax - nvMax) >= PPEParams.deltaMargin {
+            vestOKDecided = true
+        }
 
         func majority(_ xs: [Bool]) -> Bool? {
             guard !xs.isEmpty else { return nil }
@@ -349,12 +360,34 @@ final class PPEDetector {
         if let d = vestOKDecided   { t.vestHist.append(d) }
         if t.helmetHist.count > PPEParams.smoothWindow { t.helmetHist.removeFirst(t.helmetHist.count - PPEParams.smoothWindow) }
         if t.vestHist.count   > PPEParams.smoothWindow { t.vestHist.removeFirst(t.vestHist.count   - PPEParams.smoothWindow) }
-        let helmetOK = majority(t.helmetHist) ?? (helmetOKDecided ?? false)
-        let vestOK   = majority(t.vestHist)   ?? (vestOKDecided   ?? false)
+
+        // Conservative policy + per-item requirement toggles
+        let helmetFinal: Bool = {
+            if requireHelmet {
+                return (majority(t.helmetHist) ?? helmetOKDecided) ?? false
+            } else {
+                // if helmet evaluation is disabled, treat as pass so allOK isn't blocked
+                return true
+            }
+        }()
+
+        let vestFinal: Bool = {
+            if requireVest {
+                return (majority(t.vestHist) ?? vestOKDecided) ?? false
+            } else {
+                return true
+            }
+        }()
+
         tracks[trackIndex] = t
 
         let origin = originFor(trackBox: pBox, newPersons: newPersons, newOrigins: newOrigins)
-        let result = PPEDetectionResult(personBoxVision: (tracks[trackIndex].lastDraw ?? pBox), origin: origin, helmetOK: helmetOK, vestOK: vestOK)
+        let result = PPEDetectionResult(
+            personBoxVision: (tracks[trackIndex].lastDraw ?? pBox),
+            origin: origin,
+            helmetOK: helmetFinal,
+            vestOK: vestFinal
+        )
         delegate?.detector(self, didProduce: result)
     }
 }

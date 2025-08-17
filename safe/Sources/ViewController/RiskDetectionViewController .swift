@@ -183,6 +183,8 @@ override func viewDidLoad() {
 
   // 위임 연결
   ppeDetector.delegate = self
+  ppeDetector.requireHelmet = isHelmetOn
+  ppeDetector.requireVest   = isVestOn
 
   updateModel()
   configCameraCapture()
@@ -222,12 +224,16 @@ private func rebuildOptionsMenu() {
     self.rebuildOptionsMenu()
   }
   let helmetAction = UIAction(title: "안전모", state: isHelmetOn ? .on : .off) { [weak self] _ in
-    self?.isHelmetOn.toggle()
-    self?.rebuildOptionsMenu()
+    guard let self = self else { return }
+    self.isHelmetOn.toggle()
+    self.ppeDetector.requireHelmet = self.isHelmetOn
+    self.rebuildOptionsMenu()
   }
   let vestAction = UIAction(title: "안전조끼", state: isVestOn ? .on : .off) { [weak self] _ in
-    self?.isVestOn.toggle()
-    self?.rebuildOptionsMenu()
+    guard let self = self else { return }
+    self.isVestOn.toggle()
+    self.ppeDetector.requireVest = self.isVestOn
+    self.rebuildOptionsMenu()
   }
   optionsButton.menu = UIMenu(title: "표시/평가 항목", children: [postureAction, helmetAction, vestAction])
   optionsButton.showsMenuAsPrimaryAction = true
@@ -356,6 +362,8 @@ extension RiskDetectionViewController : CameraFeedManagerDelegate {
 func cameraFeedManager(
   _ cameraFeedManager: CameraFeedManager, didOutput pixelBuffer: CVPixelBuffer
 ) {
+  ppeDetector.requireHelmet = isHelmetOn
+  ppeDetector.requireVest   = isVestOn
   // PPE 좌표 변환용 원본 이미지 크기 저장
   latestImageSize = pixelBuffer.size
 
