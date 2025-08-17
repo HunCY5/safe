@@ -211,7 +211,7 @@ final class SafetyManagerViewController: UIViewController {
     // MARK: - action
     
     @objc private func didTapStart() {
-        let vc = YOLOCameraViewController()
+        let vc = RiskDetectionViewController()
         navigationController?.pushViewController(vc, animated: true)
     }
     

@@ -18,8 +18,17 @@ final class PPEDetectionOverlayView: UIView {
         labelLayers.removeAll()
     }
 
-    // 기존: 카메라 미리보기 레이어 기반 렌더
-    func render(result: PPEDetectionResult?, with previewLayer: AVCaptureVideoPreviewLayer) {
+    // Helper to compute stroke color based on toggles
+    private func strokeColor(for result: PPEDetectionResult, useHelmet: Bool, useVest: Bool) -> CGColor {
+        let helmetPass = !useHelmet || result.helmetOK
+        let vestPass   = !useVest   || result.vestOK
+        let ok = helmetPass && vestPass
+        return (ok ? UIColor.systemGreen : UIColor.systemRed).cgColor
+    }
+
+    // 기존: 카메라 미리보기 레이어 기반 렌더 (backward-compatible)
+    func render(result: PPEDetectionResult?, with previewLayer: AVCaptureVideoPreviewLayer,
+                showHelmetLabel: Bool = true, showVestLabel: Bool = true) {
         clear()
         guard let result = result else { return }
         // Vision → 미디어 → View 좌표 변환
@@ -32,21 +41,20 @@ final class PPEDetectionOverlayView: UIView {
 
         let shape = (layer as! CAShapeLayer)
         shape.path = UIBezierPath(rect: rect).cgPath
-        shape.strokeColor = (result.allOK ? UIColor.systemGreen : UIColor.systemRed).cgColor
+        shape.strokeColor = strokeColor(for: result, useHelmet: showHelmetLabel, useVest: showVestLabel)
         shape.fillColor = UIColor.clear.cgColor
         shape.lineWidth = 2
 
         let originText = (result.origin == .detected) ? "탐지" : "추정"
-        let items: [(String, UIColor)] = [
-            ("Person · \(originText)", result.allOK ? .systemGreen : .systemRed),
-            (result.helmetOK ? "Helmet" : "No Helmet", result.helmetOK ? .systemGreen : .systemRed),
-            (result.vestOK   ? "Vest"   : "No Vest",   result.vestOK   ? .systemGreen : .systemRed)
-        ]
+        var items: [(String, UIColor)] = [("Person · \(originText)", (shape.strokeColor == UIColor.systemGreen.cgColor) ? .systemGreen : .systemRed)]
+        if showHelmetLabel { items.append((result.helmetOK ? "Helmet" : "No Helmet", result.helmetOK ? .systemGreen : .systemRed)) }
+        if showVestLabel   { items.append((result.vestOK   ? "Vest"   : "No Vest",   result.vestOK   ? .systemGreen : .systemRed)) }
         drawStackedLabels(above: rect, items: items)
     }
 
     // 추가: OverlayView(UIImageView) + 원본 imageSize 기반 렌더
-    func render(result: PPEDetectionResult?, imageSize: CGSize, in imageView: UIImageView) {
+    func render(result: PPEDetectionResult?, imageSize: CGSize, in imageView: UIImageView,
+                showHelmetLabel: Bool = true, showVestLabel: Bool = true) {
         clear()
         guard let result = result else { return }
 
@@ -74,16 +82,14 @@ final class PPEDetectionOverlayView: UIView {
         // 4) 그리기
         let shape = (layer as! CAShapeLayer)
         shape.path = UIBezierPath(rect: viewRect).cgPath
-        shape.strokeColor = (result.allOK ? UIColor.systemGreen : UIColor.systemRed).cgColor
+        shape.strokeColor = strokeColor(for: result, useHelmet: showHelmetLabel, useVest: showVestLabel)
         shape.fillColor = UIColor.clear.cgColor
         shape.lineWidth = 2
 
         let originText = (result.origin == .detected) ? "탐지" : "추정"
-        let items: [(String, UIColor)] = [
-            ("Person · \(originText)", result.allOK ? .systemGreen : .systemRed),
-            (result.helmetOK ? "Helmet" : "No Helmet", result.helmetOK ? .systemGreen : .systemRed),
-            (result.vestOK   ? "Vest"   : "No Vest",   result.vestOK   ? .systemGreen : .systemRed)
-        ]
+        var items: [(String, UIColor)] = [("Person · \(originText)", (shape.strokeColor == UIColor.systemGreen.cgColor) ? .systemGreen : .systemRed)]
+        if showHelmetLabel { items.append((result.helmetOK ? "Helmet" : "No Helmet", result.helmetOK ? .systemGreen : .systemRed)) }
+        if showVestLabel   { items.append((result.vestOK   ? "Vest"   : "No Vest",   result.vestOK   ? .systemGreen : .systemRed)) }
         drawStackedLabels(above: viewRect, items: items)
     }
 

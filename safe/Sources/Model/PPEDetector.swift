@@ -37,9 +37,8 @@ final class PPEDetector {
     private let visionQueue = DispatchQueue(label: "ppe.vision.queue", qos: .userInitiated)
     private var inflight = false
 
-    // Which PPE items are required to be evaluated (toggled via VC)
-    var requireHelmet: Bool = true
-    var requireVest: Bool = true
+    // 최근 안정 결과 캐시(깜빡임 방지)
+    private var lastStableResult: (result: PPEDetectionResult, hold: Int)? = nil
 
     init(modelName: String = "DetectionYolov11") { // .mlpackage/.mlmodelc base name
         self.modelName = modelName
@@ -78,11 +77,14 @@ final class PPEDetector {
 
     private func postprocess(observations: [VNRecognizedObjectObservation]) {
         let tPersonEff: Float = PPEParams.tPerson
-        func isSmallPerson(_ r: CGRect) -> Bool { r.width < PPEParams.minPersonWidth || r.height < PPEParams.minPersonHeight }
+        func isSmallPerson(_ r: CGRect) -> Bool {
+            r.width < PPEParams.minPersonWidth || r.height < PPEParams.minPersonHeight
+        }
 
         // 1) filter by class/threshold
         let filtered: [(Int, VNRecognizedObjectObservation)] = observations.compactMap { o in
-            guard let top = o.labels.first, let idx = PPEClasses.names.firstIndex(of: top.identifier) else { return nil }
+            guard let top = o.labels.first,
+                  let idx = PPEClasses.names.firstIndex(of: top.identifier) else { return nil }
             let c = top.confidence
             let pass: Bool = {
                 switch idx {
@@ -104,7 +106,7 @@ final class PPEDetector {
         let noVests   = filtered.filter { $0.0 == PPEClass.noVest.rawValue }.map { $0.1 }
         var personOrigins: [PersonOrigin] = Array(repeating: .detected, count: personBoxes.count)
 
-        // NMS for persons
+        // 2) NMS for persons
         do {
             let sortedIdx = personBoxes.indices.sorted { (i, j) -> Bool in
                 let ai = personBoxes[i]; let aj = personBoxes[j]
@@ -120,13 +122,16 @@ final class PPEDetector {
                 keepBoxes.append(r)
                 keepOrigins.append(o)
                 for k in (0..<srcBoxes.count).reversed() {
-                    if iouRect(srcBoxes[k], r) > PPEParams.personNmsIoU { srcBoxes.remove(at: k); srcOrigins.remove(at: k) }
+                    if iouRect(srcBoxes[k], r) > PPEParams.personNmsIoU {
+                        srcBoxes.remove(at: k); srcOrigins.remove(at: k)
+                    }
                 }
             }
             personBoxes = keepBoxes
             personOrigins = keepOrigins
         }
 
+        // 3) PPE-only 보조 person 합성
         if personBoxes.isEmpty && (!(helmets.isEmpty && noHelmets.isEmpty && vests.isEmpty && noVests.isEmpty)) {
             let ppeRects = (helmets + noHelmets + vests + noVests).map { $0.boundingBox }
             let clusters = clusterRects(ppeRects, iouJoin: PPEParams.ppeClusterJoinIoU)
@@ -136,7 +141,7 @@ final class PPEDetector {
             personOrigins = Array(repeating: .synthesized, count: personBoxes.count)
         }
 
-        // Tracking (IoU + EMA)
+        // 4) Tracking (IoU + EMA)
         let zipped = zip(personBoxes, personOrigins).sorted { $0.0.minX < $1.0.minX }
         var newPersons = zipped.map { $0.0 }
         var newOrigins = zipped.map { $0.1 }
@@ -264,7 +269,7 @@ final class PPEDetector {
             tracks = merged
         }
 
-        // 한 사람 탐지로 제한
+        // 5) 한 사람 선택 + 출력
         func originFor(trackBox: CGRect, newPersons: [CGRect], newOrigins: [PersonOrigin]) -> PersonOrigin {
             guard !newPersons.isEmpty else { return .detected }
             var best: (d: CGFloat, o: PersonOrigin) = (.greatestFiniteMagnitude, .detected)
@@ -296,13 +301,32 @@ final class PPEDetector {
             if a.2 != b.2 { return a.2 < b.2 }
             return a.3 < b.3
         }) else {
-            delegate?.detector(self, didProduce: nil)
+            // 활성 트랙이 잠시 사라진 경우 최근 결과를 잠깐 유지
+            if var cached = self.lastStableResult, cached.hold > 0 {
+                cached.hold -= 1
+                self.lastStableResult = cached
+                delegate?.detector(self, didProduce: cached.result)
+            } else {
+                delegate?.detector(self, didProduce: nil)
+            }
             return
         }
 
         let trackIndex = chosen.offset
         var t = tracks[trackIndex]
         let pBox = t.bbox
+
+        // 상체 기준 필터(조끼 오검출 억제, 범위 약간 넓힘)
+        func isOnTorso(child: CGRect, of person: CGRect) -> Bool {
+            let torso = CGRect(
+                x: person.minX + person.width * 0.03,
+                y: person.minY + person.height * 0.20,
+                width:  person.width * 0.94,
+                height: person.height * 0.65
+            )
+            let c = CGPoint(x: child.midX, y: child.midY)
+            return torso.contains(c)
+        }
 
         // 한 사람 제한 조건
         func maxConf(in list: [VNRecognizedObjectObservation], parent: CGRect) -> Float {
@@ -316,16 +340,6 @@ final class PPEDetector {
             }
             return m
         }
-        func isOnTorso(child: CGRect, of person: CGRect) -> Bool {
-            let torso = CGRect(
-                x: person.minX + person.width * 0.04,
-                y: person.minY + person.height * 0.25,
-                width:  person.width * 0.92,
-                height: person.height * 0.60
-            )
-            let c = CGPoint(x: child.midX, y: child.midY)
-            return torso.contains(c)
-        }
 
         let hMax  = maxConf(in: helmets,   parent: pBox)
         let nhMax = maxConf(in: noHelmets, parent: pBox)
@@ -334,17 +348,17 @@ final class PPEDetector {
         let vMax  = maxConf(in: torsoVests,   parent: pBox)
         let nvMax = maxConf(in: torsoNoVests, parent: pBox)
 
-        // Decide helmet/vest with a bias to show violations when signals are present
+        // 미착용 신호를 우선 고려(규정 위반 강조)
         var helmetOKDecided: Bool?
         if nhMax >= PPEParams.tNoHelmet {
-            helmetOKDecided = false  // strong NO-helmet wins immediately
+            helmetOKDecided = false
         } else if hMax >= PPEParams.tHelmet && (hMax - nhMax) >= PPEParams.deltaMargin {
             helmetOKDecided = true
         }
 
         var vestOKDecided: Bool?
         if nvMax >= PPEParams.tNoVest {
-            vestOKDecided = false    // strong NO-vest wins immediately
+            vestOKDecided = false
         } else if vMax >= PPEParams.tVest && (vMax - nvMax) >= PPEParams.deltaMargin {
             vestOKDecided = true
         }
@@ -361,23 +375,8 @@ final class PPEDetector {
         if t.helmetHist.count > PPEParams.smoothWindow { t.helmetHist.removeFirst(t.helmetHist.count - PPEParams.smoothWindow) }
         if t.vestHist.count   > PPEParams.smoothWindow { t.vestHist.removeFirst(t.vestHist.count   - PPEParams.smoothWindow) }
 
-        // Conservative policy + per-item requirement toggles
-        let helmetFinal: Bool = {
-            if requireHelmet {
-                return (majority(t.helmetHist) ?? helmetOKDecided) ?? false
-            } else {
-                // if helmet evaluation is disabled, treat as pass so allOK isn't blocked
-                return true
-            }
-        }()
-
-        let vestFinal: Bool = {
-            if requireVest {
-                return (majority(t.vestHist) ?? vestOKDecided) ?? false
-            } else {
-                return true
-            }
-        }()
+        let helmetFinal: Bool = (majority(t.helmetHist) ?? helmetOKDecided) ?? false
+        let vestFinal:   Bool = (majority(t.vestHist)   ?? vestOKDecided)   ?? false
 
         tracks[trackIndex] = t
 
@@ -388,6 +387,10 @@ final class PPEDetector {
             helmetOK: helmetFinal,
             vestOK: vestFinal
         )
+
+        // 최신 안정 결과 보관(깜빡임 완화)
+        self.lastStableResult = (result, PPEParams.outputHoldFrames)
+
         delegate?.detector(self, didProduce: result)
     }
 }

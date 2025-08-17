@@ -31,37 +31,44 @@ public struct PPEClasses {
 
 public struct PPEParams {
     // thresholds
-    public static var tPerson: Float   = 0.45
-    public static var tHelmet: Float   = 0.50 // 0.55 → 0.50
-    public static var tNoHelmet: Float = 0.60 // 0.70 → 0.60
-    public static var tVest: Float     = 0.50 // 0.55 → 0.50
-    public static var tNoVest: Float   = 0.70 // 0.80 → 0.70
-    // margins (class 경쟁)
-    public static let deltaMargin: Float = 0.12 // 0.20 → 0.12
-    public static let extraNoVestMargin: Float = 0.20 // 0.30 → 0.20
+    public static var tPerson: Float   = 0.30
+    public static var tHelmet: Float   = 0.40
+    public static var tNoHelmet: Float = 0.70
+    public static var tVest: Float     = 0.40
+    public static var tNoVest: Float   = 0.70
+
+    // margins (클래스 경쟁 완화)
+    public static let deltaMargin: Float = 0.10
+    public static let extraNoVestMargin: Float = 0.15
+
     // match / tracking
     public static let iouThreshold: CGFloat = 0.10
     public static let assocIou: CGFloat = 0.60
-    public static let assocIouRelaxed: CGFloat = 0.30
-    public static let maxMiss = 8
-    public static let boxEmaAlpha: CGFloat = 0.3
-    public static let smoothWindow = 8
-    // person 후보 필터
-    public static let minPersonWidth:  CGFloat = 0.02
-    public static let minPersonHeight: CGFloat = 0.04
-    public static let personNmsIoU: CGFloat = 0.55
-    // PPE-only 보조 person 합성
+    public static let assocIouRelaxed: CGFloat = 0.25 // 0.30 -> 0.25
+    public static let maxMiss = 12                    // 8 -> 12
+    public static let boxEmaAlpha: CGFloat = 0.4      // 0.3 -> 0.4 (추적 응답성 ↑)
+    public static let smoothWindow = 10               // 8 -> 10 (히스토리 길이 ↑)
+
+    // person 후보 필터 (작은 인물 통과율 ↑)
+    public static let minPersonWidth:  CGFloat = 0.015 // 0.02 -> 0.015
+    public static let minPersonHeight: CGFloat = 0.030 // 0.04 -> 0.03
+    public static let personNmsIoU: CGFloat = 0.50     // 0.55 -> 0.50
+
+    // PPE-only 보조 person 합성 (작은 PPE에서 사람 상자 추정)
     public static let ppeClusterJoinIoU: CGFloat = 0.10
     public static let ppeSynthNmsIoU: CGFloat = 0.45
     public static let ppeSynthPadX: CGFloat = 0.06
     public static let ppeSynthPadY: CGFloat = 0.12
+
     // 활성 트랙 중복 억제/통합
     public static let dedupIoU: CGFloat = 0.60
     public static let dedupCenterFrac: CGFloat = 0.20
     public static let dedupContainSmall: CGFloat = 0.80
     public static let finalActiveIoU: CGFloat = 0.65
-}
 
+    // 출력 홀드(깜빡임 감소): 트랙이 잠시 사라져도 최근 결과 유지할 프레임 수
+    public static let outputHoldFrames = 4
+}
 
 public func clusterRects(_ rects: [CGRect], iouJoin: CGFloat) -> [CGRect] {
     var remaining = rects
