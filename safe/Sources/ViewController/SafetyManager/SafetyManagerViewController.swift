@@ -60,18 +60,30 @@ final class SafetyManagerViewController: UIViewController {
     private let siteTitleLabel: UILabel = {
         let lb = UILabel()
         lb.text = "안전감시"
-        lb.font = .systemFont(ofSize: 20, weight: .bold)
+        lb.font = .systemFont(ofSize: 30, weight: .bold)
         lb.textColor = .label
         lb.translatesAutoresizingMaskIntoConstraints = false
         return lb
     }()
     private let siteSubtitleLabel: UILabel = {
         let lb = UILabel()
-        lb.text = "서울 건설현장 A동"
-        lb.font = .systemFont(ofSize: 13, weight: .regular)
+//        lb.text = "서울 건설현장 A동"
+        lb.text = "경기 광주시 도척윗로 278"
+        lb.font = .systemFont(ofSize: 15, weight: .regular)
         lb.textColor = .secondaryLabel
         lb.translatesAutoresizingMaskIntoConstraints = false
         return lb
+    }()
+    
+    private let locationIconView: UIImageView = {
+        let iv = UIImageView(image: UIImage(systemName: "location.fill"))
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        iv.contentMode = .scaleAspectFit
+        // 색상은 서브타이틀과 어울리게 시스템 블루로 지정 (너무 튀지 않도록 약간 흐릿한 톤)
+        iv.tintColor = .systemBlue
+        // 자간 및 높이에 맞춘 심볼 크기 설정
+        iv.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 15, weight: .regular)
+        return iv
     }()
     
     // 아이콘
@@ -187,7 +199,14 @@ final class SafetyManagerViewController: UIViewController {
         topBar.backgroundColor = .secondarySystemBackground // 색상
         view.addSubview(topBar)
         
-        let topTextStack = UIStackView(arrangedSubviews: [siteTitleLabel, siteSubtitleLabel])
+        // 서브타이틀 + 위치 아이콘 가로 스택
+        let subtitleRow = UIStackView(arrangedSubviews: [siteSubtitleLabel, locationIconView])
+        subtitleRow.axis = .horizontal
+        subtitleRow.alignment = .center
+        subtitleRow.spacing = 6
+        subtitleRow.translatesAutoresizingMaskIntoConstraints = false
+
+        let topTextStack = UIStackView(arrangedSubviews: [siteTitleLabel, subtitleRow])
         topTextStack.axis = .vertical
         topTextStack.alignment = .leading
         topTextStack.spacing = 2
@@ -211,8 +230,13 @@ final class SafetyManagerViewController: UIViewController {
             topRow.bottomAnchor.constraint(equalTo: topBar.bottomAnchor, constant: -12),
 
             // 로고 크기
-            topLogoView.widthAnchor.constraint(equalToConstant: 50),
-            topLogoView.heightAnchor.constraint(equalToConstant: 50)
+            topLogoView.widthAnchor.constraint(equalToConstant: 65),
+            topLogoView.heightAnchor.constraint(equalToConstant: 65)
+        ])
+        
+        NSLayoutConstraint.activate([
+            locationIconView.widthAnchor.constraint(equalToConstant: 16),
+            locationIconView.heightAnchor.constraint(equalToConstant: 16)
         ])
         
         setupLayout()
@@ -613,3 +637,4 @@ final class SafetyManagerViewController: UIViewController {
         todayCountListener?.remove()
     }
 }
+

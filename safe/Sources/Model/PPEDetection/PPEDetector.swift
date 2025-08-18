@@ -69,7 +69,7 @@ final class PPEDetector {
             self.postprocess(observations: obs)
             self.inflight = false
         }
-        req.imageCropAndScaleOption = .scaleFit
+        req.imageCropAndScaleOption = .centerCrop
 
         visionQueue.async {
             let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: orientation, options: [:])
@@ -283,6 +283,7 @@ final class PPEDetector {
             return best.o
         }
 
+        // 최근 탐지 유지
         let currentTracks = tracks.enumerated().filter { $0.element.seen >= 2 && $0.element.miss <= 1 }
         let screenCenter = CGPoint(x: 0.5, y: 0.5)
         func priorityKey(for t: Track) -> (Int, CGFloat, CGFloat, Int) {
