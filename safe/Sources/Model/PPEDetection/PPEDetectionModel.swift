@@ -31,15 +31,15 @@ public struct PPEClasses {
 
 public struct PPEParams {
     // thresholds
-    public static var tPerson: Float   = 0.35
-    public static var tHelmet: Float   = 0.35
-    public static var tNoHelmet: Float = 0.70
-    public static var tVest: Float     = 0.40
-    public static var tNoVest: Float   = 0.65
+    public static var tPerson: Float   = 0.55
+    public static var tHelmet: Float   = 0.45
+    public static var tNoHelmet: Float = 0.45
+    public static var tVest: Float     = 0.55
+    public static var tNoVest: Float   = 0.80
 
     // margins (클래스 경쟁 완화)
-    public static let deltaMargin: Float = 0.10
-    public static let extraNoVestMargin: Float = 0.15
+    public static let deltaMargin: Float = 0.25
+    public static let extraNoVestMargin: Float = 0.20
 
     // match / tracking
     public static let iouThreshold: CGFloat = 0.10

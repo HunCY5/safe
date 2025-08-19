@@ -45,8 +45,8 @@ final class PPEDetectionOverlayView: UIView {
         shape.fillColor = UIColor.clear.cgColor
         shape.lineWidth = 2
 
-        let originText = (result.origin == .detected) ? "탐지" : "추정"
-        var items: [(String, UIColor)] = [("Person · \(originText)", (shape.strokeColor == UIColor.systemGreen.cgColor) ? .systemGreen : .systemRed)]
+//        let originText = (result.origin == .detected) ? "탐지" : "추정"
+        var items: [(String, UIColor)] = [("Person #1", (shape.strokeColor == UIColor.systemGreen.cgColor) ? .systemGreen : .systemRed)]
         if showHelmetLabel { items.append((result.helmetOK ? "Helmet" : "No Helmet", result.helmetOK ? .systemGreen : .systemRed)) }
         if showVestLabel   { items.append((result.vestOK   ? "Vest"   : "No Vest",   result.vestOK   ? .systemGreen : .systemRed)) }
         drawStackedLabels(above: rect, items: items)
@@ -86,8 +86,8 @@ final class PPEDetectionOverlayView: UIView {
         shape.fillColor = UIColor.clear.cgColor
         shape.lineWidth = 2
 
-        let originText = (result.origin == .detected) ? "탐지" : "추정"
-        var items: [(String, UIColor)] = [("Person · \(originText)", (shape.strokeColor == UIColor.systemGreen.cgColor) ? .systemGreen : .systemRed)]
+//        let originText = (result.origin == .detected) ? "탐지" : "추정"
+        var items: [(String, UIColor)] = [("Person #1", (shape.strokeColor == UIColor.systemGreen.cgColor) ? .systemGreen : .systemRed)]
         if showHelmetLabel { items.append((result.helmetOK ? "Helmet" : "No Helmet", result.helmetOK ? .systemGreen : .systemRed)) }
         if showVestLabel   { items.append((result.vestOK   ? "Vest"   : "No Vest",   result.vestOK   ? .systemGreen : .systemRed)) }
         drawStackedLabels(above: viewRect, items: items)
