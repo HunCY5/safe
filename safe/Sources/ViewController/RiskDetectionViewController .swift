@@ -15,7 +15,9 @@
 // =============================================================================
 //
 // Modifications by Chansol Shin on 2025-07-22
+// Modifications by Yonghun Choi on 2025-08-19
 // =============================================================================
+
 
 import AVFoundation
 import UIKit
@@ -194,7 +196,7 @@ final class RiskDetectionViewController: UIViewController {
     ppeDetector.delegate = self
 
     riskLogger.sectorProvider = { SafetyManagerViewController.currentSectorName }
-    riskLogger.thresholdSeconds = 10.0 
+    riskLogger.thresholdSeconds = 10.0
 
     OWASEvaluator.screenshotProvider = { [weak self] in
       guard let self = self else { return nil }
@@ -470,7 +472,7 @@ extension RiskDetectionViewController : CameraFeedManagerDelegate {
     }
 
     if isHelmetOn || isVestOn {
-      ppeDetector.process(pixelBuffer: pixelBuffer, orientation: .right)
+      ppeDetector.process(pixelBuffer: pixelBuffer, orientation: cameraFeedManager.pixelBufferOrientation)
     } else {
       DispatchQueue.main.async { [weak self] in
         self?.ppeOverlayView.clear()

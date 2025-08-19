@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // =============================================================================
+//
+// Modifications by Yonghun Choi on 2025-08-19
+// =============================================================================
 
 import AVFoundation
 import Accelerate.vImage
@@ -50,6 +53,9 @@ final class CameraFeedManager: NSObject, AVCaptureVideoDataOutputSampleBufferDel
   }
 
   let captureSession = AVCaptureSession()
+
+  let videoOutput = AVCaptureVideoDataOutput()
+  private(set) var pixelBufferOrientation: CGImagePropertyOrientation = .up
 
 
   /// Initialize the capture session.
@@ -93,8 +99,6 @@ final class CameraFeedManager: NSObject, AVCaptureVideoDataOutputSampleBufferDel
     } catch {
       return
     }
-
-    let videoOutput = AVCaptureVideoDataOutput()
     videoOutput.videoSettings = [
       (kCVPixelBufferPixelFormatTypeKey as String): NSNumber(value: kCVPixelFormatType_32BGRA)
     ]
@@ -108,16 +112,35 @@ final class CameraFeedManager: NSObject, AVCaptureVideoDataOutputSampleBufferDel
       captureSession.addOutput(videoOutput)
       if let conn = videoOutput.connection(with: .video) {
         if #available(iOS 17.0, *) {
-          // 90 degrees = portrait (camera held upright)
+          // Portrait capture; pixels are delivered already rotated, so Vision should use .up
           if conn.isVideoRotationAngleSupported(90) {
             conn.videoRotationAngle = 90
           }
+        // ios 17이상: 픽셀 90도 회전으로 정방향 맞춤
+          self.pixelBufferOrientation = .up
         } else {
+          // ios 16이하: 픽셀 회전 X
           conn.videoOrientation = .portrait
+          self.pixelBufferOrientation = .right
         }
+      }
+      if #unavailable(iOS 17.0) {
+        NotificationCenter.default.addObserver(self, selector: #selector(handleDeviceOrientationDidChange), name: UIDevice.orientationDidChangeNotification, object: nil)
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
       }
     }
     videoOutput.setSampleBufferDelegate(self, queue: dataOutputQueue)
+  }
+
+  @objc private func handleDeviceOrientationDidChange() {
+    guard #unavailable(iOS 17.0) else { return }
+    switch UIDevice.current.orientation {
+    case .portrait:            pixelBufferOrientation = .right
+    case .portraitUpsideDown:  pixelBufferOrientation = .left
+    case .landscapeLeft:       pixelBufferOrientation = .up
+    case .landscapeRight:      pixelBufferOrientation = .down
+    default: break
+    }
   }
 
   // MARK: Methods of the AVCaptureVideoDataOutputSampleBufferDelegate
