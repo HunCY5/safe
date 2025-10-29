@@ -34,7 +34,8 @@ let project = Project(
                             ]
                         ]
                     ],
-                    "UIUserInterfaceStyle": "Light"
+                    "UIUserInterfaceStyle": "Light",
+                    "UIDesignRequiresCompatibility": true,
                 ]
             ),
             sources: ["safe/Sources/**"],
