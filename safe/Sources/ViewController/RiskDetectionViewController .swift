@@ -95,7 +95,7 @@ final class RiskDetectionViewController: UIViewController {
     var interval: TimeInterval {
       switch self {
       case .none: return 0
-      case .rula, .reba, .owas: return 2.0
+      case .rula, .reba, .owas: return 1.0
       }
     }
   }
@@ -195,8 +195,11 @@ final class RiskDetectionViewController: UIViewController {
 
     ppeDetector.delegate = self
 
-    riskLogger.sectorProvider = { SafetyManagerViewController.currentSectorName }
-    riskLogger.thresholdSeconds = 10.0
+    riskLogger.sectorProvider = { () -> String in
+      return SafetyManagerViewController.currentSectorName
+    }
+    riskLogger.thresholdSeconds = 5.0
+      riskLogger.repeatEverySeconds = 5.0
 
     OWASEvaluator.screenshotProvider = { [weak self] in
       guard let self = self else { return nil }
@@ -525,7 +528,7 @@ extension RiskDetectionViewController: PPEDetectorDelegate {
           self.riskLogger.handle(
             result: r,
             baseFrame: self.lastBaseFrame,
-            makePPEScreenshot: { [weak self] in
+            makePPEScreenshot: { [weak self] () -> UIImage? in
               guard let self = self, let base = self.lastBaseFrame else { return nil }
 
               let targetSize = self.overlayView.bounds.size
