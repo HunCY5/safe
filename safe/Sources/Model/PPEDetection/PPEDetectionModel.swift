@@ -16,6 +16,7 @@ public enum PersonOrigin { case detected, synthesized }
 public enum PPEClass: Int { case hardhat = 0, noHardhat = 1, noVest = 2, person = 3, vest = 4 }
 
 public struct PPEDetectionResult {
+    public let trackID: Int // 트랙 식별자 추가
     public let personBoxVision: CGRect   // Vision normalized (origin at bottom-left)
     public let origin: PersonOrigin      // detected or synthesized
     public let helmetOK: Bool
