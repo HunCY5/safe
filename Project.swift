@@ -34,7 +34,6 @@ let project = Project(
                             ]
                         ]
                     ],
-                    "UIUserInterfaceStyle": "Light",
                     "UIDesignRequiresCompatibility": true,
                 ]
             ),

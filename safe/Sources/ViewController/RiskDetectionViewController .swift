@@ -53,6 +53,7 @@ final class RiskDetectionViewController: UIViewController {
     label.textAlignment = .center
     label.font = UIFont.systemFont(ofSize: 18, weight: .medium)
     label.translatesAutoresizingMaskIntoConstraints = false
+    label.textColor = .label
     return label
   }()
 
@@ -114,7 +115,7 @@ final class RiskDetectionViewController: UIViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    view.backgroundColor = .white
+    view.backgroundColor = .systemBackground
     view.isOpaque = true
     setupOverlayView()
 
@@ -353,8 +354,8 @@ final class RiskDetectionViewController: UIViewController {
             cg.setLineWidth(3)
             cg.setLineCap(.round)
             cg.setLineJoin(.round)
-            cg.setStrokeColor(UIColor.orange.cgColor)
-            cg.setFillColor(UIColor.orange.cgColor)
+            cg.setStrokeColor(UIColor.systemOrange.cgColor)
+            cg.setFillColor(UIColor.systemOrange.cgColor)
 
             cg.beginPath()
             for (a, b) in pairs {
@@ -386,9 +387,16 @@ final class RiskDetectionViewController: UIViewController {
 
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
-    view.backgroundColor = .white
-    navigationController?.view.backgroundColor = .white
+    view.backgroundColor = .systemBackground
+    navigationController?.view.backgroundColor = .systemBackground
     navigationController?.navigationBar.isTranslucent = false
+    let appearance = UINavigationBarAppearance()
+    appearance.configureWithOpaqueBackground()
+    appearance.backgroundColor = .systemBackground
+    appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
+    navigationController?.navigationBar.standardAppearance = appearance
+    navigationController?.navigationBar.scrollEdgeAppearance = appearance
+    navigationController?.navigationBar.compactAppearance = appearance
     isActive = true
     cameraFeedManager?.startRunning()
     self.navigationController?.setNavigationBarHidden(false, animated: animated)
