@@ -15,8 +15,8 @@
 // Modifications by Chansol Shin on 2025-07-22
 
 import UIKit
-import FirebaseCore
-import FirebaseAuth
+// import FirebaseCore   // TODO: Firebase 활성화
+// import FirebaseAuth   // TODO: Firebase 활성화
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -28,22 +28,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
   
-      // Firebase 초기화
-      FirebaseApp.configure()
+      // TODO: Firebase 초기화 비활성화
+      // FirebaseApp.configure()
 
-      if let user = Auth.auth().currentUser {
-          print("✅ 로그인됨: \(user.uid)")
-          print("이메일: \(user.email ?? "없음")")
-          print("익명 사용자?: \(user.isAnonymous)")
-          
-          if user.isAnonymous {
-              print("⚠️ 익명 로그인 상태입니다. 일반 로그인 필요")
-          } else {
-              print("✅ 일반 사용자 로그인 상태입니다.")
-          }
-      } else {
-          print("❌ 로그인된 사용자 없음")
-      }
+      // TODO: 인증 상태 로깅 비활성화
+      // if let user = Auth.auth().currentUser {
+      //     print("✅ 로그인됨: \(user.uid)")
+      // } else {
+      //     print("❌ 로그인된 사용자 없음")
+      // }
       
     return true
   }

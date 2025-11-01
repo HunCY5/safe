@@ -114,6 +114,8 @@ final class RiskDetectionViewController: UIViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
+    view.backgroundColor = .white
+    view.isOpaque = true
     setupOverlayView()
 
     // 네비게이션 바 버튼 메뉴 구성
@@ -204,18 +206,20 @@ final class RiskDetectionViewController: UIViewController {
     }
     OWASEvaluator.saveHandler = { [weak self] image, score, poseType in
       guard let _ = self else { return }
-      PostureRiskLogger.shared.sectorProvider = { SafetyManagerViewController.currentSectorName }
-      PostureRiskLogger.shared.minInterval = 5
-      PostureRiskLogger.shared.upload(image: image, poseType: poseType, score: score, completion: nil)
+      // TODO: 자세평가(OWAS) 로그 기록 활성화
+      // PostureRiskLogger.shared.sectorProvider = { SafetyManagerViewController.currentSectorName }
+      // PostureRiskLogger.shared.minInterval = 5
+      // PostureRiskLogger.shared.upload(image: image, poseType: poseType, score: score, completion: nil)
     }
     RULAEvaluator.screenshotProvider = { [weak self] in
         self?.makeSkeletonOnlyScreenshot()
     }
     RULAEvaluator.saveHandler = { [weak self] image, score, _ in
         guard let self = self else { return }
-        PostureRiskLogger.shared.sectorProvider = { SafetyManagerViewController.currentSectorName }
-        PostureRiskLogger.shared.minInterval = 5
-        PostureRiskLogger.shared.upload(image: image, poseType: "RULA", score: score, completion: nil)
+        // TODO: 자세평가(RULA) 로그 기록 활성화
+        // PostureRiskLogger.shared.sectorProvider = { SafetyManagerViewController.currentSectorName }
+        // PostureRiskLogger.shared.minInterval = 5
+        // PostureRiskLogger.shared.upload(image: image, poseType: "RULA", score: score, completion: nil)
     }
 
     REBAEvaluator.screenshotProvider = { [weak self] in
@@ -223,9 +227,10 @@ final class RiskDetectionViewController: UIViewController {
     }
     REBAEvaluator.saveHandler = { [weak self] image, score, _ in
         guard let self = self else { return }
-        PostureRiskLogger.shared.sectorProvider = { SafetyManagerViewController.currentSectorName }
-        PostureRiskLogger.shared.minInterval = 5
-        PostureRiskLogger.shared.upload(image: image, poseType: "REBA", score: score, completion: nil)
+        // TODO: 자세평가(REBA) 로그 기록 활성화
+        // PostureRiskLogger.shared.sectorProvider = { SafetyManagerViewController.currentSectorName }
+        // PostureRiskLogger.shared.minInterval = 5
+        // PostureRiskLogger.shared.upload(image: image, poseType: "REBA", score: score, completion: nil)
       }
 
     updateModel()
@@ -381,6 +386,9 @@ final class RiskDetectionViewController: UIViewController {
 
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
+    view.backgroundColor = .white
+    navigationController?.view.backgroundColor = .white
+    navigationController?.navigationBar.isTranslucent = false
     isActive = true
     cameraFeedManager?.startRunning()
     self.navigationController?.setNavigationBarHidden(false, animated: animated)
@@ -521,40 +529,41 @@ extension RiskDetectionViewController: PPEDetectorDelegate {
                                      showHelmetLabel: self.isHelmetOn,
                                      showVestLabel: self.isVestOn)
 
+          // TODO: 로그 기록 활성화
           // Risk 로깅
-          self.riskLogger.handle(
-            result: r,
-            baseFrame: self.lastBaseFrame,
-            makePPEScreenshot: { [weak self] in
-              guard let self = self, let base = self.lastBaseFrame else { return nil }
-
-              let targetSize = self.overlayView.bounds.size
-              guard targetSize.width > 0, targetSize.height > 0 else { return nil }
-
-              // 오프스크린 오버레이(YOLO 라벨/박스만)
-              let tempOverlay = PPEDetectionOverlayView(frame: CGRect(origin: .zero, size: targetSize))
-              let tempImageView = UIImageView(frame: CGRect(origin: .zero, size: targetSize))
-              tempOverlay.isOpaque = false
-
-              // 이미지 좌표계 기준 렌더(스켈레톤은 추가 X)
-              tempOverlay.render(result: r,
-                                 imageSize: base.size,
-                                 in: tempImageView,
-                                 showHelmetLabel: self.isHelmetOn,
-                                 showVestLabel: self.isVestOn)
-
-              // 최종 합성: 배경(원본 프레임, aspectFill) + YOLO 오버레이
-              let renderer = UIGraphicsImageRenderer(size: targetSize)
-              let shot = renderer.image { ctx in
-                let rect = Self.aspectFillRect(for: base.size, in: targetSize)
-                base.draw(in: rect)
-                tempOverlay.layer.render(in: ctx.cgContext)
-              }
-              return shot
-            },
-            detectHelmet: self.isHelmetOn,
-            detectVest: self.isVestOn
-          )
+          // self.riskLogger.handle(
+          //   result: r,
+          //   baseFrame: self.lastBaseFrame,
+          //   makePPEScreenshot: { [weak self] in
+          //     guard let self = self, let base = self.lastBaseFrame else { return nil }
+          //
+          //     let targetSize = self.overlayView.bounds.size
+          //     guard targetSize.width > 0, targetSize.height > 0 else { return nil }
+          //
+          //     // 오프스크린 오버레이(YOLO 라벨/박스만)
+          //     let tempOverlay = PPEDetectionOverlayView(frame: CGRect(origin: .zero, size: targetSize))
+          //     let tempImageView = UIImageView(frame: CGRect(origin: .zero, size: targetSize))
+          //     tempOverlay.isOpaque = false
+          //
+          //     // 이미지 좌표계 기준 렌더(스켈레톤은 추가 X)
+          //     tempOverlay.render(result: r,
+          //                        imageSize: base.size,
+          //                        in: tempImageView,
+          //                        showHelmetLabel: self.isHelmetOn,
+          //                        showVestLabel: self.isVestOn)
+          //
+          //     // 최종 합성: 배경(원본 프레임, aspectFill) + YOLO 오버레이
+          //     let renderer = UIGraphicsImageRenderer(size: targetSize)
+          //     let shot = renderer.image { ctx in
+          //       let rect = Self.aspectFillRect(for: base.size, in: targetSize)
+          //       base.draw(in: rect)
+          //       tempOverlay.layer.render(in: ctx.cgContext)
+          //     }
+          //     return shot
+          //   },
+          //   detectHelmet: self.isHelmetOn,
+          //   detectVest: self.isVestOn
+          // )
 
         } else {
           self.ppeOverlayView.clear()

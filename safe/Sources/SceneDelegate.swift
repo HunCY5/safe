@@ -6,7 +6,6 @@
 //
 
 import UIKit
-import FirebaseAuth
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
@@ -19,14 +18,19 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         let window = UIWindow(windowScene: windowScene)
         
-        let mainVC = MainTabBarController()
-        
-        // 로그인 여부 확인 후 tag3(Profile)로 이동
-        if Auth.auth().currentUser == nil {
-            mainVC.selectedIndex = 3
-        }
+        // TODO: Firebase 활성화
+//        let mainVC = MainTabBarController()
+//                
+//        // 로그인 여부 확인 후 tag3(Profile)로 이동
+//        if Auth.auth().currentUser == nil {
+//            mainVC.selectedIndex = 3
+//        }
 
-        window.rootViewController = mainVC
+//                window.rootViewController = mainVC
+        
+        // 출시용: 카메라 탐지 화면으로 바로 진입
+        let root = UINavigationController(rootViewController: RiskDetectionViewController())
+        window.rootViewController = root
         
         self.window = window
         window.makeKeyAndVisible()
