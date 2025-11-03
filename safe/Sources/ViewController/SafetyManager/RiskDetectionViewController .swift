@@ -87,6 +87,31 @@ final class RiskDetectionViewController: UIViewController {
   private var isHelmetOn = true
   private var isVestOn = true
 
+  // 권한 거부 시 표시할 안내 오버레이
+  private let permissionOverlay = UIView()
+  private let permissionLabel: UILabel = {
+    let lb = UILabel()
+    lb.text = "카메라 권한이 필요합니다.\n설정에서 허용해 주세요."
+    lb.textAlignment = .center
+    lb.numberOfLines = 0
+    lb.textColor = .secondaryLabel
+    lb.font = .systemFont(ofSize: 16, weight: .regular)
+    lb.translatesAutoresizingMaskIntoConstraints = false
+    return lb
+  }()
+  private lazy var openSettingsButton: UIButton = {
+    var cfg = UIButton.Configuration.filled()
+    cfg.cornerStyle = .large
+    cfg.baseBackgroundColor = .systemOrange
+    var title = AttributedString("설정으로 이동")
+    title.font = .systemFont(ofSize: 16, weight: .semibold)
+    cfg.attributedTitle = title
+    let btn = UIButton(configuration: cfg)
+    btn.addTarget(self, action: #selector(openSettings), for: .touchUpInside)
+    btn.translatesAutoresizingMaskIntoConstraints = false
+    return btn
+  }()
+
   enum EvaluationMethod: String, CaseIterable {
     case none = "자세평가X"
     case rula = "RULA"
@@ -118,6 +143,7 @@ final class RiskDetectionViewController: UIViewController {
     view.backgroundColor = .systemBackground
     view.isOpaque = true
     setupOverlayView()
+    setupPermissionOverlay()
 
     // 네비게이션 바 버튼 메뉴 구성
     func makeMenu() -> UIMenu {
@@ -235,8 +261,8 @@ final class RiskDetectionViewController: UIViewController {
       }
 
     updateModel()
-    configCameraCapture()
     resetEvaluationTimer()
+    checkAndHandleCameraPermission()
   }
 
   private func setupOverlayView() {
@@ -398,7 +424,8 @@ final class RiskDetectionViewController: UIViewController {
     navigationController?.navigationBar.scrollEdgeAppearance = appearance
     navigationController?.navigationBar.compactAppearance = appearance
     isActive = true
-    cameraFeedManager?.startRunning()
+    NotificationCenter.default.addObserver(self, selector: #selector(appWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+    checkAndHandleCameraPermission()
     self.navigationController?.setNavigationBarHidden(false, animated: animated)
     self.tabBarController?.tabBar.isHidden = true
   }
@@ -416,6 +443,7 @@ final class RiskDetectionViewController: UIViewController {
     ppeDetector.resetLock()
     self.tabBarController?.tabBar.isHidden = false
     self.navigationController?.setNavigationBarHidden(false, animated: animated)
+    NotificationCenter.default.removeObserver(self, name: UIApplication.willEnterForegroundNotification, object: nil)
   }
 
   deinit {
@@ -434,6 +462,107 @@ final class RiskDetectionViewController: UIViewController {
   private func configCameraCapture() {
     cameraFeedManager = CameraFeedManager()
     cameraFeedManager.delegate = self
+  }
+
+  private func setupPermissionOverlay() {
+    permissionOverlay.backgroundColor = .systemBackground
+    permissionOverlay.isHidden = true
+    permissionOverlay.isUserInteractionEnabled = true
+    permissionOverlay.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(permissionOverlay)
+
+    NSLayoutConstraint.activate([
+      permissionOverlay.topAnchor.constraint(equalTo: overlayView.topAnchor),
+      permissionOverlay.leadingAnchor.constraint(equalTo: overlayView.leadingAnchor),
+      permissionOverlay.trailingAnchor.constraint(equalTo: overlayView.trailingAnchor),
+      permissionOverlay.bottomAnchor.constraint(equalTo: overlayView.bottomAnchor),
+    ])
+
+    let stack = UIStackView(arrangedSubviews: [permissionLabel, openSettingsButton])
+    stack.axis = .vertical
+    stack.alignment = .center
+    stack.spacing = 12
+    stack.translatesAutoresizingMaskIntoConstraints = false
+    permissionOverlay.addSubview(stack)
+
+    NSLayoutConstraint.activate([
+      stack.centerXAnchor.constraint(equalTo: permissionOverlay.centerXAnchor),
+      stack.centerYAnchor.constraint(equalTo: permissionOverlay.centerYAnchor),
+      openSettingsButton.leadingAnchor.constraint(greaterThanOrEqualTo: permissionOverlay.leadingAnchor, constant: 24),
+      openSettingsButton.trailingAnchor.constraint(lessThanOrEqualTo: permissionOverlay.trailingAnchor, constant: -24),
+      openSettingsButton.heightAnchor.constraint(equalToConstant: 44)
+    ])
+    // 터치 및 시각적 최상단 보장
+    openSettingsButton.isUserInteractionEnabled = true
+    permissionOverlay.layer.zPosition = 999
+    view.bringSubviewToFront(permissionOverlay)
+  }
+
+  private func showPermissionOverlay(_ show: Bool) {
+    permissionOverlay.isHidden = !show
+    if show {
+      cameraFeedManager?.stopRunning()
+      overlayView.image = nil
+      permissionOverlay.layer.zPosition = 999
+      view.bringSubviewToFront(permissionOverlay)
+      setControlsEnabled(false)
+    } else {
+      setControlsEnabled(true)
+    }
+  }
+
+  private func checkAndHandleCameraPermission() {
+    let status = AVCaptureDevice.authorizationStatus(for: .video)
+    switch status {
+    case .authorized:
+      showPermissionOverlay(false)
+      if cameraFeedManager == nil {
+        configCameraCapture()
+      }
+      cameraFeedManager?.startRunning()
+    case .notDetermined:
+      AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+        DispatchQueue.main.async {
+          guard let self = self else { return }
+          if granted {
+            self.showPermissionOverlay(false)
+            if self.cameraFeedManager == nil {
+              self.configCameraCapture()
+            }
+            self.cameraFeedManager?.startRunning()
+          } else {
+            self.showPermissionOverlay(true)
+          }
+        }
+      }
+    case .denied, .restricted:
+      showPermissionOverlay(true)
+    @unknown default:
+      showPermissionOverlay(true)
+    }
+  }
+
+  @objc private func openSettings() {
+    guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+    DispatchQueue.main.async {
+      if let scene = self.view.window?.windowScene {
+        scene.open(url, options: nil) { _ in }
+      } else {
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+      }
+    }
+  }
+
+  @objc private func appWillEnterForeground() {
+    checkAndHandleCameraPermission()
+  }
+
+  // 권한 상태에 따라 화면 내 컨트롤 활성/비활성
+  private func setControlsEnabled(_ enabled: Bool) {
+    segmentedControl.isEnabled = enabled
+    weightPickerView.isUserInteractionEnabled = enabled
+    weightPickerView.alpha = enabled ? 1.0 : 0.5
+    navigationItem.rightBarButtonItem?.isEnabled = enabled
   }
 
   private func updateModel() {
