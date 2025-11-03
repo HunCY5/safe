@@ -99,6 +99,10 @@ final class RiskDetectionViewController: UIViewController {
     lb.translatesAutoresizingMaskIntoConstraints = false
     return lb
   }()
+
+  // 최초 1회 사전 안내 알림 노출 플래그
+  private let introSeenKey = "risk.camera.intro.seen.v1"
+  private var didShowIntroThisSession = false
   private lazy var openSettingsButton: UIButton = {
     var cfg = UIButton.Configuration.filled()
     cfg.cornerStyle = .large
@@ -262,7 +266,6 @@ final class RiskDetectionViewController: UIViewController {
 
     updateModel()
     resetEvaluationTimer()
-    checkAndHandleCameraPermission()
   }
 
   private func setupOverlayView() {
@@ -425,7 +428,9 @@ final class RiskDetectionViewController: UIViewController {
     navigationController?.navigationBar.compactAppearance = appearance
     isActive = true
     NotificationCenter.default.addObserver(self, selector: #selector(appWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
-    checkAndHandleCameraPermission()
+    showCameraIntroIfNeeded { [weak self] in
+      self?.checkAndHandleCameraPermission()
+    }
     self.navigationController?.setNavigationBarHidden(false, animated: animated)
     self.tabBarController?.tabBar.isHidden = true
   }
@@ -563,6 +568,31 @@ final class RiskDetectionViewController: UIViewController {
     weightPickerView.isUserInteractionEnabled = enabled
     weightPickerView.alpha = enabled ? 1.0 : 0.5
     navigationItem.rightBarButtonItem?.isEnabled = enabled
+  }
+
+  // 최초 1회 카메라 안내 알림
+  private func showCameraIntroIfNeeded(completion: @escaping () -> Void) {
+    if didShowIntroThisSession {
+      completion()
+      return
+    }
+    if UserDefaults.standard.bool(forKey: introSeenKey) {
+      completion()
+      return
+    }
+    let message = """
+    이 카메라는 작업자의 안전모/조끼 착용 여부와 자세 위험도를 분석하여 
+    안전사고 예방을 돕습니다. 
+    영상은 분석에만 사용됩니다.
+    """
+    let alert = UIAlertController(title: "세잎(Safe) 카메라 안내", message: message, preferredStyle: .alert)
+    alert.addAction(UIAlertAction(title: "확인", style: .default, handler: { [weak self] _ in
+      guard let self = self else { return }
+      UserDefaults.standard.set(true, forKey: self.introSeenKey)
+      self.didShowIntroThisSession = true
+      completion()
+    }))
+    present(alert, animated: true, completion: nil)
   }
 
   private func updateModel() {
