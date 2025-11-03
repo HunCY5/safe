@@ -14,8 +14,10 @@ let project = Project(
             bundleId: "io.tuist.safe",
             infoPlist: .extendingDefault(
                 with: [
+                    // 앱 이름
+                    "CFBundleDisplayName": "세잎",
                     // 카메라 접근 이유
-                    "NSCameraUsageDescription": "세잎 앱이 실시간 자세 추적을 위해 카메라를 사용합니다.",
+                    "NSCameraUsageDescription": "세잎 앱이 실시간 자세 추적 & 보호구 착용 탐지를 위해 카메라를 사용합니다.",
                     // 런치 스크린 기본값
                     "UILaunchScreen": [
                         "UIColorName": "",
