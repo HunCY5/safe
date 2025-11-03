@@ -34,6 +34,13 @@ final class PPEDetector {
     private var tracks: [Track] = []
     private var nextID = 1
 
+    // Locked-person tracking (one-person focus)
+    private var lockedTrackID: Int? = nil
+    private var lockedMissCount: Int = 0
+    private let lockIouKeep: CGFloat = 0.30
+    private let lockIouDrop: CGFloat = 0.20
+    private let lockMissLimit: Int = 8
+
     private let visionQueue = DispatchQueue(label: "ppe.vision.queue", qos: .userInitiated)
     private var inflight = false
     // 출력 끊김 완화: 결과 유지 프레임 수(캐시 보관)
@@ -58,6 +65,13 @@ final class PPEDetector {
         } catch {
             fatalError("Model load failed: \(error)")
         }
+    }
+
+    // Reset locked person state
+    func resetLock() {
+        lockedTrackID = nil
+        lockedMissCount = 0
+        lastStableResult = nil
     }
 
     func process(pixelBuffer: CVPixelBuffer, orientation: CGImagePropertyOrientation = .right) {
@@ -296,26 +310,49 @@ final class PPEDetector {
             return (detectedRank, area, centerNegDistance, -t.id)
         }
 
-        guard let chosen = currentTracks.max(by: { lhs, rhs in
-            let a = priorityKey(for: lhs.element)
-            let b = priorityKey(for: rhs.element)
-            if a.0 != b.0 { return a.0 < b.0 }
-            if a.1 != b.1 { return a.1 < b.1 }
-            if a.2 != b.2 { return a.2 < b.2 }
-            return a.3 < b.3
-        }) else {
-            // 활성 트랙이 잠시 사라진 경우 최근 결과를 잠깐 유지
-            if var cached = self.lastStableResult, cached.hold > 0 {
-                cached.hold -= 1
-                self.lastStableResult = cached
-                delegate?.detector(self, didProduce: cached.result)
-            } else {
-                delegate?.detector(self, didProduce: nil)
+        // 우선 잠금된 트랙 유지 시도
+        var selectedIndex: Int? = nil
+        if let lockedID = lockedTrackID, let idx = tracks.firstIndex(where: { $0.id == lockedID }) {
+            let lt = tracks[idx]
+            // 현재 프레임의 후보들과 IoU를 비교하여 유지 여부 판단
+            let bestIoU = newPersons.map { iouRect(lt.bbox, $0) }.max() ?? 0
+            if lt.miss == 0 || bestIoU >= lockIouKeep {
+                selectedIndex = idx
+                lockedMissCount = 0
+            } else if bestIoU < lockIouDrop || lt.miss > 0 {
+                lockedMissCount += 1
+                if lockedMissCount > lockMissLimit {
+                    lockedTrackID = nil
+                    lockedMissCount = 0
+                }
             }
-            return
         }
 
-        let trackIndex = chosen.offset
+        // 잠금이 없거나 유지 실패 시, 기존 우선순위로 선택
+        if selectedIndex == nil {
+            guard let chosen = currentTracks.max(by: { lhs, rhs in
+                let a = priorityKey(for: lhs.element)
+                let b = priorityKey(for: rhs.element)
+                if a.0 != b.0 { return a.0 < b.0 }
+                if a.1 != b.1 { return a.1 < b.1 }
+                if a.2 != b.2 { return a.2 < b.2 }
+                return a.3 < b.3
+            }) else {
+                // 활성 트랙이 잠시 사라진 경우 최근 결과를 잠깐 유지
+                if var cached = self.lastStableResult, cached.hold > 0 {
+                    cached.hold -= 1
+                    self.lastStableResult = cached
+                    delegate?.detector(self, didProduce: cached.result)
+                } else {
+                    delegate?.detector(self, didProduce: nil)
+                }
+                return
+            }
+            selectedIndex = chosen.offset
+            if lockedTrackID == nil, let si = selectedIndex { lockedTrackID = tracks[si].id; lockedMissCount = 0 }
+        }
+
+        guard let trackIndex = selectedIndex else { delegate?.detector(self, didProduce: nil); return }
         var t = tracks[trackIndex]
         let pBox = t.bbox
 
@@ -385,6 +422,7 @@ final class PPEDetector {
 
         let origin = originFor(trackBox: pBox, newPersons: newPersons, newOrigins: newOrigins)
         let result = PPEDetectionResult(
+            trackID: t.id,
             personBoxVision: (tracks[trackIndex].lastDraw ?? pBox),
             origin: origin,
             helmetOK: helmetFinal,
