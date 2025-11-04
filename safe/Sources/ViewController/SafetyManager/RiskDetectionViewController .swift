@@ -21,6 +21,7 @@
 
 import AVFoundation
 import UIKit
+import SafariServices
 import os
 import Combine
 
@@ -169,7 +170,26 @@ final class RiskDetectionViewController: UIViewController {
         if !(self.isHelmetOn || self.isVestOn) { self.ppeOverlayView.clear(); self.ppeDetector.resetLock() }
         self.navigationItem.rightBarButtonItem?.menu = makeMenu()
       }
-      return UIMenu(title: "표시/평가 항목", children: [postureAction, helmetAction, vestAction])
+      let learnMoreAction = UIAction(title: "세잎에 대해 더 알아보기", image: UIImage(systemName: "link")) { [weak self] _ in
+        guard let self = self else { return }
+        guard let url = URL(string: "https://sepia-chili-4c9.notion.site/Safe-254bd8a3845180439247f4aa899e4b9e?source=copy_link") else { return }
+        // 모달 표시 전 카메라 정지
+        DispatchQueue.global(qos: .userInitiated).async {
+          self.cameraFeedManager?.stopRunning()
+        }
+        let safari = SFSafariViewController(url: url)
+        safari.preferredControlTintColor = .systemOrange
+        safari.dismissButtonStyle = .done
+        safari.modalPresentationStyle = .pageSheet
+        safari.delegate = self
+        safari.presentationController?.delegate = self
+        if let sheet = safari.sheetPresentationController {
+          sheet.detents = [.medium(), .large()]
+          sheet.prefersGrabberVisible = true
+        }
+        self.present(safari, animated: true, completion: nil)
+      }
+      return UIMenu(title: "표시/평가 항목", children: [postureAction, helmetAction, vestAction, learnMoreAction])
     }
     self.navigationItem.rightBarButtonItem = UIBarButtonItem(title: "옵션", image: nil, primaryAction: nil, menu: makeMenu())
 
@@ -622,6 +642,38 @@ final class RiskDetectionViewController: UIViewController {
     modelType = ModelType.allCases[sender.selectedSegmentIndex]
     updateModel()
   }
+  override func viewDidAppear(_ animated: Bool) {
+    super.viewDidAppear(animated)
+    // 사파리/시트 등 모달이 닫힌 뒤 여기로 복귀함. 필요 시 캡처 재개
+    if presentedViewController == nil {
+      resumeCaptureAfterModal()
+    }
+  }
+
+  // 모달/시트 종료 후 카메라 및 델리게이트 복구
+  private func resumeCaptureAfterModal() {
+    isActive = true
+
+    let status = AVCaptureDevice.authorizationStatus(for: .video)
+    guard status == .authorized else {
+      showPermissionOverlay(true)
+      return
+    }
+    showPermissionOverlay(false)
+
+    if cameraFeedManager == nil {
+      configCameraCapture()              // 내부에서 delegate = self 설정
+    } else {
+      cameraFeedManager.delegate = self  // 기존 인스턴스면 delegate 복구
+    }
+    ppeDetector.delegate = self
+
+    resetEvaluationTimer()
+
+    DispatchQueue.global(qos: .userInitiated).async {
+      self.cameraFeedManager?.startRunning()
+    }
+  }
 }
 
 // MARK: - CameraFeedManagerDelegate Methods
@@ -678,6 +730,28 @@ extension RiskDetectionViewController : CameraFeedManagerDelegate {
         return
       }
     }
+  }
+}
+
+// MARK: - SFSafariViewControllerDelegate
+extension RiskDetectionViewController: SFSafariViewControllerDelegate {
+  func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
+    // 권한 허용 상태이면서 오버레이가 숨김일 때만 재시작
+    let status = AVCaptureDevice.authorizationStatus(for: .video)
+    guard status == .authorized, permissionOverlay.isHidden else { return }
+    if cameraFeedManager == nil {
+      configCameraCapture()
+    }
+    DispatchQueue.global(qos: .userInitiated).async {
+      self.cameraFeedManager?.startRunning()
+    }
+  }
+}
+
+extension RiskDetectionViewController: UIAdaptivePresentationControllerDelegate {
+  func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+    // 스와이프(인터랙티브)로 닫힌 경우도 재개
+    resumeCaptureAfterModal()
   }
 }
 
