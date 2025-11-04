@@ -157,6 +157,7 @@ final class RiskDetectionViewController: UIViewController {
         self.isPostureOn.toggle()
         self.resetEvaluationTimer()
         self.navigationItem.rightBarButtonItem?.menu = makeMenu()
+        self.updateEvaluationControlsEnabled()
       }
       let helmetAction = UIAction(title: "안전모", state: isHelmetOn ? .on : .off) { [weak self] _ in
         guard let self = self else { return }
@@ -241,6 +242,8 @@ final class RiskDetectionViewController: UIViewController {
       weightPickerView.trailingAnchor.constraint(equalTo: evaluationLabel.trailingAnchor),
       weightPickerView.heightAnchor.constraint(equalToConstant: 80)
     ])
+
+    updateEvaluationControlsEnabled()
 
     // Combine: 무게 변경 바인딩
     weightSelection.$selectedWeight
@@ -441,9 +444,11 @@ final class RiskDetectionViewController: UIViewController {
     
   @objc private func segmentedControlChanged(_ sender: UISegmentedControl) {
     selectedEvaluationMethod = EvaluationMethod.allCases[sender.selectedSegmentIndex]
-      // RULA/REBA/OWAS일 때만 무게 피커 보이기 (자세평가가 켜져 있을 때 의미 있음)
-    let showWeight = (selectedEvaluationMethod == .rula || selectedEvaluationMethod == .reba || selectedEvaluationMethod == .owas)
+    // RULA/REBA/OWAS일 때만 무게 피커 보이기 (자세평가가 켜져 있을 때 의미 있음)
+    let showWeight = isPostureOn && (selectedEvaluationMethod == .rula || selectedEvaluationMethod == .reba || selectedEvaluationMethod == .owas)
     weightPickerView.isHidden = !showWeight
+    weightPickerView.isUserInteractionEnabled = showWeight
+    weightPickerView.alpha = showWeight ? 1.0 : 0.5
   }
 
   override func viewWillAppear(_ animated: Bool) {
@@ -600,6 +605,15 @@ final class RiskDetectionViewController: UIViewController {
     weightPickerView.isUserInteractionEnabled = enabled
     weightPickerView.alpha = enabled ? 1.0 : 0.5
     navigationItem.rightBarButtonItem?.isEnabled = enabled
+  }
+
+  // 자세평가 UI 활성/비활성 동기화
+  private func updateEvaluationControlsEnabled() {
+    segmentedControl.isEnabled = isPostureOn
+    let needsWeight = isPostureOn && (selectedEvaluationMethod == .rula || selectedEvaluationMethod == .reba || selectedEvaluationMethod == .owas)
+    weightPickerView.isHidden = !needsWeight
+    weightPickerView.isUserInteractionEnabled = needsWeight
+    weightPickerView.alpha = needsWeight ? 1.0 : 0.5
   }
 
   // 최초 1회 카메라 안내 알림
