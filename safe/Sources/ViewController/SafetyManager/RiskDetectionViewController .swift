@@ -170,7 +170,10 @@ final class RiskDetectionViewController: UIViewController {
         if !(self.isHelmetOn || self.isVestOn) { self.ppeOverlayView.clear(); self.ppeDetector.resetLock() }
         self.navigationItem.rightBarButtonItem?.menu = makeMenu()
       }
-      let learnMoreAction = UIAction(title: "세잎에 대해 더 알아보기", image: UIImage(systemName: "link")) { [weak self] _ in
+      let learnMoreIcon = UIImage(systemName: "link")?.withTintColor(.systemOrange, renderingMode: .alwaysOriginal)
+      var learnMoreAttr = UIMenuElement.Attributes()
+      learnMoreAttr.remove(.destructive)
+      let learnMoreAction = UIAction(title: "세잎에 대해 더 알아보기", image: learnMoreIcon, identifier: nil, discoverabilityTitle: nil, attributes: learnMoreAttr, state: .off) { [weak self] _ in
         guard let self = self else { return }
         guard let url = URL(string: "https://sepia-chili-4c9.notion.site/Safe-254bd8a3845180439247f4aa899e4b9e?source=copy_link") else { return }
         // 모달 표시 전 카메라 정지
@@ -189,9 +192,18 @@ final class RiskDetectionViewController: UIViewController {
         }
         self.present(safari, animated: true, completion: nil)
       }
-      return UIMenu(title: "표시/평가 항목", children: [postureAction, helmetAction, vestAction, learnMoreAction])
+      learnMoreAction.attributes.remove(.keepsMenuPresented)
+      // 토글들은 인라인 서브메뉴로 내려 보관 → 루트 메뉴의 상태 체크마크를 제거하여 아이콘을 좌측에 배치
+      let togglesMenu = UIMenu(title: "표시/평가 항목", options: .displayInline, children: [postureAction, helmetAction, vestAction])
+      return UIMenu(title: "", children: [learnMoreAction, togglesMenu])
     }
     self.navigationItem.rightBarButtonItem = UIBarButtonItem(title: "옵션", image: nil, primaryAction: nil, menu: makeMenu())
+    // 버전 라벨 추가
+    let versionLabel = UILabel()
+    versionLabel.text = "v1.0.0"
+    versionLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+    versionLabel.textColor = .secondaryLabel
+    self.navigationItem.leftBarButtonItem = UIBarButtonItem(customView: versionLabel)
 
     // PPE 오버레이(자세 오버레이와 동일 프레임)
     ppeOverlayView.backgroundColor = .clear

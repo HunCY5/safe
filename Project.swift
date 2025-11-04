@@ -37,6 +37,9 @@ let project = Project(
                         ]
                     ],
                     "UIDesignRequiresCompatibility": true,
+                    // 앱 버전 정보
+                    "CFBundleShortVersionString": "1.0.0",
+                    "CFBundleVersion": "1",
                 ]
             ),
             sources: ["safe/Sources/**"],
