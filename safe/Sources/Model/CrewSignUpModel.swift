@@ -1,0 +1,63 @@
+//
+//  CrewSignUpModel.swift
+//  safe
+//
+//  Created by 신찬솔 on 7/27/25.
+//
+
+import Foundation
+import FirebaseFirestore
+import FirebaseAuth
+
+class CrewSignUpModel {
+    func checkEmployeeNumberDuplicate(employeeId: String, completion: @escaping (Result<Bool, Error>) -> Void) {
+        let db = Firestore.firestore()
+        db.collection("users")
+            .whereField("employeeId", isEqualTo: employeeId)
+            .getDocuments { snapshot, error in
+                if let error = error {
+                    completion(.failure(error))
+                } else {
+                    let isAvailable = snapshot?.documents.isEmpty ?? true
+                    completion(.success(isAvailable))
+                }
+            }
+    }
+    
+    func registerUser(name: String, phone: String, companyName: String, employeeId: String, password: String, working: Bool, resting: Bool, completion: @escaping (Result<Void, Error>) -> Void) {
+        let email = "\(employeeId)@safe.com"
+        Auth.auth().createUser(withEmail: email, password: password) { result, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+
+            guard let uid = result?.user.uid else {
+                completion(.failure(NSError(domain: "AuthError", code: -1, userInfo: [NSLocalizedDescriptionKey: "UID 생성 실패"])))
+                return
+            }
+
+            let db = Firestore.firestore()
+            let userData: [String: Any] = [
+                "uid": uid,
+                "name": name,
+                "companyName": companyName,
+                "employeeId": employeeId,
+                "phoneNumber": phone,
+                "Type": "crew",
+                "working": false,
+                "resting": false
+            ]
+
+            db.collection("users").document(uid).setData(userData) { error in
+                if let error = error {
+                    completion(.failure(error))
+                } else {
+                    completion(.success(()))
+                }
+            }
+        }
+    }
+    
+    
+}
