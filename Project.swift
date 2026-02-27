@@ -11,7 +11,7 @@ let project = Project(
             name: "safe",
             destinations: .iOS,
             product: .app,
-            bundleId: "io.tuist.safe",
+            bundleId: "com.yhcs.safe",
             infoPlist: .extendingDefault(
                 with: [
                     // 앱 이름
@@ -64,7 +64,7 @@ let project = Project(
             name: "safeTests",
             destinations: .iOS,
             product: .unitTests,
-            bundleId: "io.tuist.safeTests",
+            bundleId: "com.yhcs.safeTests",
             infoPlist: .default,
             sources: ["safe/Tests/**"],
             resources: [],
