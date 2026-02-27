@@ -9,7 +9,7 @@ let project = Project(
     targets: [
         .target(
             name: "safe",
-            destinations: .iOS,
+            destinations: [.iPhone],
             product: .app,
             bundleId: "com.yhcs.safe",
             infoPlist: .extendingDefault(
@@ -62,7 +62,7 @@ let project = Project(
         ),
         .target(
             name: "safeTests",
-            destinations: .iOS,
+            destinations: [.iPhone],
             product: .unitTests,
             bundleId: "com.yhcs.safeTests",
             infoPlist: .default,
