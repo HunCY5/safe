@@ -55,7 +55,6 @@
       "size" : "60x60"
     },
     {
-      "filename" : "logo 2.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "3x",
@@ -92,6 +91,7 @@
       "size" : "83.5x83.5"
     },
     {
+      "filename" : "logo(1024).png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -211,7 +211,6 @@
           "value" : "dark"
         }
       ],
-      "filename" : "그림(Nbg) 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "3x",
@@ -284,6 +283,7 @@
           "value" : "dark"
         }
       ],
+      "filename" : "logo(1024)-Nbg.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -403,7 +403,6 @@
           "value" : "tinted"
         }
       ],
-      "filename" : "그림(Nbg).png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "3x",
@@ -476,6 +475,7 @@
           "value" : "tinted"
         }
       ],
+      "filename" : "logo(1024)-Nbg 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
