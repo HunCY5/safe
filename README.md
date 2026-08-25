@@ -6,6 +6,7 @@
     <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="App Store에서 다운로드" height="40" />
   </a>
 
+  
 <img width="1720" height="1080" alt="세잎썸네일" src="https://github.com/user-attachments/assets/316a0dbb-ff13-4ead-a087-e032cfc3e4dc" />
 
 
@@ -195,6 +196,35 @@ safe/                          # 레포 루트 (Tuist 프로젝트)
 | :---: | :---: |
 | <a href="https://github.com/HunCY5"><img src="https://github.com/HunCY5.png" width="200px" style="border-radius: 50%;" alt="HunCY5"/></a> | <a href="https://github.com/ChanSolShin"><img src="https://github.com/ChanSolShin.png" width="200px" style="border-radius: 50%;" alt="ChanSolShin"/></a> |
 | [**HunCY5**](https://github.com/HunCY5) | [**ChanSolShin**](https://github.com/ChanSolShin) |
+
+---
+
+### 🚀 프로젝트 실행 방법
+> Tuist로 프로젝트를 생성하는 구조라 `.xcodeproj` 및 `.xcworkspace`가 레포에 포함돼 있지 않습니다.
+
+```bash
+# 1. Tuist 설치(최초 1회)
+brew install tuist
+
+# 2. 프로젝트 Clone or Pull or Project.swift 수정 후 .xcodeproj 생성(최신화)
+cd safe
+tuist generate && pod install
+
+# 권한 에러 해결 (권한 문제 발생 시)
+mkdir -p ~/.local/state/tuist
+sudo chown -R $(whoami) ~/.local/state/tuist
+```
+
+### 📄 .gitignore 설정
+> `.xcodeproj` · `.xcworkspace` · `GoogleService-Info.plist` 는 ignore 대상.
+> 변경사항으로 추적되면 아래의 작업 실행.
+
+```bash
+git rm --cached *.xcodeproj
+git rm --cached *.xcworkspace
+```
+
+---
 
 ## 📌 브랜치 전략
 
